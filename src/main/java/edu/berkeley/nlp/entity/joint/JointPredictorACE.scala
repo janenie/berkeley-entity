@@ -16,7 +16,7 @@ import edu.berkeley.nlp.entity.Document
 import edu.berkeley.nlp.entity.coref.DocumentGraph
 import edu.berkeley.nlp.futile.fig.exec.Execution
 import edu.berkeley.nlp.entity.coref.CorefEvaluator
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface_static
 import edu.berkeley.nlp.entity.ConllDocWriter
 import edu.berkeley.nlp.entity.coref.OrderedClustering
 import edu.berkeley.nlp.entity.ner.NerFeaturizer
@@ -40,7 +40,7 @@ class JointPredictorACE(val jointFeaturizer: JointFeaturizerShared[MCNerFeaturiz
                         val weights: Array[Float],
                         val corefPruner: CorefPruner) extends Serializable {
   
-  def decodeWriteOutput(jointTestDocs: Seq[JointDocACE], maybeWikipediaInterface: Option[WikipediaInterface], doConllPostprocessing: Boolean) {
+  def decodeWriteOutput(jointTestDocs: Seq[JointDocACE], maybeWikipediaInterface: Option[WikipediaInterface_static], doConllPostprocessing: Boolean) {
     val fgfOnto = new FactorGraphFactoryACE(jointFeaturizer, maybeWikipediaInterface);
     val computer = new JointComputerShared(fgfOnto);
     val outWriter = IOUtils.openOutHard(Execution.getFile("output.conll"))
@@ -56,7 +56,7 @@ class JointPredictorACE(val jointFeaturizer: JointFeaturizerShared[MCNerFeaturiz
     Logger.endTrack();
   }
   
-  def decodeWriteOutputEvaluate(jointTestDocs: Seq[JointDocACE], maybeWikipediaInterface: Option[WikipediaInterface], doConllPostprocessing: Boolean, wikiLabelsInTrain: Set[String] = Set[String]()) {
+  def decodeWriteOutputEvaluate(jointTestDocs: Seq[JointDocACE], maybeWikipediaInterface: Option[WikipediaInterface_static], doConllPostprocessing: Boolean, wikiLabelsInTrain: Set[String] = Set[String]()) {
     val allPredBackptrsAndClusterings = new ArrayBuffer[(Array[Int],OrderedClustering)];
     val allPredNEChunks = new ArrayBuffer[Seq[Seq[Chunk[String]]]];
     val allPredWikiChunks = new ArrayBuffer[Seq[Chunk[String]]];
@@ -124,7 +124,7 @@ class JointPredictorACE(val jointFeaturizer: JointFeaturizerShared[MCNerFeaturiz
     }
   }
   
-  def decode(jointTestDoc: JointDocACE, maybeWikipediaInterface: Option[WikipediaInterface]) = {
+  def decode(jointTestDoc: JointDocACE, maybeWikipediaInterface: Option[WikipediaInterface_static]) = {
     val fgfOnto = new FactorGraphFactoryACE(jointFeaturizer, maybeWikipediaInterface);
     val computer = new JointComputerShared(fgfOnto);
     computer.viterbiDecodeProduceAnnotations(jointTestDoc, weights);

@@ -6,7 +6,7 @@ import edu.berkeley.nlp.futile.fig.basic.Indexer
 import edu.berkeley.nlp.entity.ner.NerFeaturizer
 import edu.berkeley.nlp.entity.ner.MCNerFeaturizer
 import edu.berkeley.nlp.entity.coref.CorefDoc
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface_static
 
 trait FactorGraphFactory[D,G<:JointDocFactorGraph] {
   
@@ -26,7 +26,7 @@ trait FactorGraphFactory[D,G<:JointDocFactorGraph] {
 }
 
 class FactorGraphFactoryOnto(val featurizer: JointFeaturizerShared[NerFeaturizer],
-                             val wikiDB: Option[WikipediaInterface]) extends FactorGraphFactory[JointDoc,JointDocFactorGraphOnto] {
+                             val wikiDB: Option[WikipediaInterface_static]) extends FactorGraphFactory[JointDoc,JointDocFactorGraphOnto] {
   val goldFactorGraphCache = new HashMap[UID, JointDocFactorGraphOnto]();
   val guessFactorGraphCache = new HashMap[UID, JointDocFactorGraphOnto]();
   
@@ -63,7 +63,7 @@ class FactorGraphFactoryOnto(val featurizer: JointFeaturizerShared[NerFeaturizer
 }
 
 class FactorGraphFactoryACE(val featurizer: JointFeaturizerShared[MCNerFeaturizer],
-                            val wikiDB: Option[WikipediaInterface]) extends FactorGraphFactory[JointDocACE,JointDocFactorGraphACE] {
+                            val wikiDB: Option[WikipediaInterface_static]) extends FactorGraphFactory[JointDocACE,JointDocFactorGraphACE] {
   val goldFactorGraphCache = new HashMap[UID, JointDocFactorGraphACE]();
   val guessFactorGraphCache = new HashMap[UID, JointDocFactorGraphACE]();
   

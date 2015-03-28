@@ -138,7 +138,7 @@ object WikipediaLinkDB {
   }
   
   def main(args: Array[String]) {
-    val wi = GUtil.load("data/wikipedia/wiki-model-ace-links.ser.gz").asInstanceOf[WikipediaInterface];
+    val wi = GUtil.load("data/wikipedia/wiki-model-ace-links.ser.gz").asInstanceOf[WikipediaInterface_static];
     val linkDB = wi.linksDB;
     val categoryDB = wi.categoryDB;
     val set = Set("Bill Clinton", "President", "White House", "Hospital", "Prime Minister", "Judge")

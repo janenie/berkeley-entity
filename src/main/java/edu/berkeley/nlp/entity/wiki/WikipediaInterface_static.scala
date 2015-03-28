@@ -52,13 +52,13 @@ import edu.berkeley.nlp.entity.wiki._
  * @author gdurrett
  */
 @SerialVersionUID(1L)
-class WikipediaInterface(val titleGivenSurfaceDB: WikipediaTitleGivenSurfaceDB,
+class WikipediaInterface_static(val titleGivenSurfaceDB: WikipediaTitleGivenSurfaceDB,
                          val redirectsDB: WikipediaRedirectsDB,
                          val categoryDB: WikipediaCategoryDB,
                          val linksDB: WikipediaLinkDB,
-                         val auxDB: WikipediaAuxDB) extends Serializable {
+                         val auxDB: WikipediaAuxDB) extends Serializable with WikipediaInterface2 {
   
-  def getStandardPriorForJointModel(ment: Mention) = {
+  override def getStandardPriorForJointModel(ment: Mention) = {
     val counter = new Counter[String];
     if (ment.mentionType.isClosedClass) {
       counter.incrementCount(ExcludeToken, 2.0);
@@ -71,13 +71,13 @@ class WikipediaInterface(val titleGivenSurfaceDB: WikipediaTitleGivenSurfaceDB,
     counter;
   }
   
-  def disambiguate(ment: Mention) = disambiguateBest(ment, ment.headIdx)
+  // def disambiguate(ment: Mention) = disambiguateBest(ment, ment.headIdx)
   
-  def disambiguateBest(ment: Mention, specifiedHeadIdx: Int) = {
+  override def disambiguateBest(ment: Mention, specifiedHeadIdx: Int) = {
     redirectsDB.followRedirect(titleGivenSurfaceDB.disambiguateQueries(Query.extractQueriesBest(ment).map(_.getFinalQueryStr)));
   }
   
-  def disambiguateBestNoDisambig(query: Query) = {
+  override def disambiguateBestNoDisambig(query: Query) = {
     val queryStr = query.getFinalQueryStr;
     if (titleGivenSurfaceDB.surfaceToTitle.containsKey(queryStr )) {
       val counter = titleGivenSurfaceDB.surfaceToTitle.getCounter(queryStr);
@@ -93,46 +93,46 @@ class WikipediaInterface(val titleGivenSurfaceDB: WikipediaTitleGivenSurfaceDB,
     }
   }
   
-  def disambiguateBestGetAllOptions(ment: Mention, specifiedHeadIdx: Int) = {
+  override def disambiguateBestGetAllOptions(ment: Mention, specifiedHeadIdx: Int) = {
     auxDB.purgeDisambiguationAll(
       redirectsDB.followRedirectsCounter(
         titleGivenSurfaceDB.disambiguateQueriesGetAllOptions(
           Query.extractQueriesBest(ment).map(_.getFinalQueryStr))));
   }
   
-  def disambiguateBestGetAllOptions(query: Query) = {
+  override  def disambiguateBestGetAllOptions(query: Query) = {
     auxDB.purgeDisambiguationAll(
       redirectsDB.followRedirectsCounter(
         titleGivenSurfaceDB.disambiguateQueriesGetAllOptions(
           Seq(query.getFinalQueryStr))));
   }
 
-  def disambigRes(query: Query) = {
+  override def disambigRes(query: Query) = {
     titleGivenSurfaceDB.disambiguateQueriesGetAllOptions(Seq(query.getFinalQueryStr))
   }
 
-  def disambiguateBestGetAllReasonableOptions(ment: Mention, specifiedHeadIdx: Int) = {
+  override def disambiguateBestGetAllReasonableOptions(ment: Mention, specifiedHeadIdx: Int) = {
     auxDB.purgeDisambiguationAll(
       redirectsDB.followRedirectsCounter(
         titleGivenSurfaceDB.disambiguateQueriesGetAllReasonableOptions(
           Query.extractQueriesBest(ment).map(_.getFinalQueryStr))));
   }
   
-  def disambiguateBestGetAllOneBestOptions(ment: Mention, specifiedHeadIdx: Int) = {
+  override def disambiguateBestGetAllOneBestOptions(ment: Mention, specifiedHeadIdx: Int) = {
     auxDB.purgeDisambiguationAll(
       redirectsDB.followRedirectsCounter(
         titleGivenSurfaceDB.disambiguateQueriesGetAllOneBestOptions(
           Query.extractQueriesBest(ment).map(_.getFinalQueryStr))));
   }
   
-  def getCategories(title: String) = categoryDB.getCategories(title);
-  def getCategoriesSortedByFrequency(title: String) = categoryDB.getCategoriesSortedByFrequency(title);
-  def getTopKCategoriesByFrequency(title: String, k: Int) = categoryDB.getTopKCategoriesByFrequency(title, k);
-  def getInfobox(title: String) = categoryDB.getInfobox(title);
-  def getInfoboxHead(title: String) = categoryDB.getInfoboxHead(title);
-  def getAppositive(title: String) = categoryDB.getAppositive(title);
+  override def getCategories(title: String) = categoryDB.getCategories(title);
+  override def getCategoriesSortedByFrequency(title: String) = categoryDB.getCategoriesSortedByFrequency(title);
+  override def getTopKCategoriesByFrequency(title: String, k: Int) = categoryDB.getTopKCategoriesByFrequency(title, k);
+  override def getInfobox(title: String) = categoryDB.getInfobox(title);
+  override def getInfoboxHead(title: String) = categoryDB.getInfoboxHead(title);
+  override def getAppositive(title: String) = categoryDB.getAppositive(title);
   
-  def printSome() {
+  override def printSome() {
     Logger.logss("Title given surface: " + titleGivenSurfaceDB.surfaceToTitle.size() + " surfaces, " +
                  titleGivenSurfaceDB.surfaceToTitle.keySet.asScala.flatMap(key => titleGivenSurfaceDB.surfaceToTitle.getCounter(key).keySet.asScala).size + " titles");
     val surfaceKeys = titleGivenSurfaceDB.surfaceToTitle.keySet().asScala;
@@ -154,9 +154,11 @@ class WikipediaInterface(val titleGivenSurfaceDB: WikipediaTitleGivenSurfaceDB,
       Logger.logss(key + " -> " + map(key));
     }
   }
+
+  def getStandardPriorForJointModel(ment: Any): Counter[String] = ???
 }
 
-object WikipediaInterface {
+object WikipediaInterface_static {
   
   val MaxSnippetChars = 1000;
   
@@ -176,33 +178,33 @@ object WikipediaInterface {
   val categoryDBInputPath = "";
   val categoryDBOutputPath = "";
   
-  def processWikipedia(wikipediaPath: String, queries: Set[String], parser: CoarseToFineMaxRuleParser, backoffParser: CoarseToFineMaxRuleParser): WikipediaInterface = {
+  def processWikipedia(wikipediaPath: String, queries: Set[String], parser: CoarseToFineMaxRuleParser, backoffParser: CoarseToFineMaxRuleParser): WikipediaInterface_static = {
     val titleGivenSurface = WikipediaTitleGivenSurfaceDB.processWikipedia(wikipediaPath, queries);
     val redirects = WikipediaRedirectsDB.processWikipedia(wikipediaPath, titleGivenSurface);
     val allPageTargetsLc = titleGivenSurface.allPossibleTitlesLowercase.toSet ++ redirects.possibleRedirectTargetsLc;
-    val links = if (WikipediaInterface.computeLinkDB) {
+    val links = if (WikipediaInterface_static.computeLinkDB) {
       WikipediaLinkDB.processWikipedia(wikipediaPath, allPageTargetsLc);
     } else {
       new WikipediaLinkDB(new Indexer[String], new HashMap[String,Array[Int]], new HashMap[String,Array[Int]]);
     }
     val categories = WikipediaCategoryDB.processWikipedia(wikipediaPath, allPageTargetsLc, parser, backoffParser);
     val aux = WikipediaAuxDB.processWikipedia(wikipediaPath, allPageTargetsLc);
-    val wi = new WikipediaInterface(titleGivenSurface, redirects, categories, links, aux);
+    val wi = new WikipediaInterface_static(titleGivenSurface, redirects, categories, links, aux);
     wi.printSome();
     wi;
   }
   
-  def processWikipedia(wikipediaPath: String, queries: Set[String], categoryDB: WikipediaCategoryDB): WikipediaInterface = {
+  def processWikipedia(wikipediaPath: String, queries: Set[String], categoryDB: WikipediaCategoryDB): WikipediaInterface_static = {
     val titleGivenSurface = WikipediaTitleGivenSurfaceDB.processWikipedia(wikipediaPath, queries);
     val redirects = WikipediaRedirectsDB.processWikipedia(wikipediaPath, titleGivenSurface);
     val allPageTargetsLc = titleGivenSurface.allPossibleTitlesLowercase.toSet ++ redirects.possibleRedirectTargetsLc;
-    val links = if (WikipediaInterface.computeLinkDB) {
+    val links = if (WikipediaInterface_static.computeLinkDB) {
       WikipediaLinkDB.processWikipedia(wikipediaPath, allPageTargetsLc);
     } else {
       new WikipediaLinkDB(new Indexer[String], new HashMap[String,Array[Int]], new HashMap[String,Array[Int]]);
     }
     val aux = WikipediaAuxDB.processWikipedia(wikipediaPath, allPageTargetsLc);
-    val wi = new WikipediaInterface(titleGivenSurface, redirects, categoryDB, links, aux);
+    val wi = new WikipediaInterface_static(titleGivenSurface, redirects, categoryDB, links, aux);
     wi.printSome();
     wi;
   }
@@ -210,14 +212,14 @@ object WikipediaInterface {
 //  def getWikipediaInterface
   
   def main(args: Array[String]) {
-    LightRunner.initializeOutput(WikipediaInterface.getClass);
-    LightRunner.populateScala(WikipediaInterface.getClass, args);
+    LightRunner.initializeOutput(WikipediaInterface_static.getClass);
+    LightRunner.populateScala(WikipediaInterface_static.getClass, args);
 //    WikipediaInterface.populate(args);
-    val (parser, backoffParser): (CoarseToFineMaxRuleParser, CoarseToFineMaxRuleParser) = if (WikipediaInterface.loadParsers) {
+    val (parser, backoffParser): (CoarseToFineMaxRuleParser, CoarseToFineMaxRuleParser) = if (WikipediaInterface_static.loadParsers) {
       Logger.logss("Loading parser");
-      val parser = PreprocessingDriver.loadParser(WikipediaInterface.parserModelPath);
+      val parser = PreprocessingDriver.loadParser(WikipediaInterface_static.parserModelPath);
       Logger.logss("Loading backoff parser");
-      val backoffParser = PreprocessingDriver.loadParser(WikipediaInterface.backoffParserModelPath);
+      val backoffParser = PreprocessingDriver.loadParser(WikipediaInterface_static.backoffParserModelPath);
       (parser, backoffParser)
     } else {
       (null, null)
@@ -226,14 +228,14 @@ object WikipediaInterface {
     val mentionPropertyComputer = new MentionPropertyComputer(None);
     val pmAssembler = CorefDocAssembler(Language.ENGLISH, useGoldMentions = false);
     val gmAssembler = CorefDocAssembler(Language.ENGLISH, useGoldMentions = true);
-    val corefDocs = WikipediaInterface.datasetPaths.split(",").flatMap(path_ => {
+    val corefDocs = WikipediaInterface_static.datasetPaths.split(",").flatMap(path_ => {
       var path = path_
       val mentionType = if(path.contains(":")) {
         val s = path.split(":")
         path = s(1)
         s(0)
       } else {
-        WikipediaInterface.mentionType
+        WikipediaInterface_static.mentionType
       }
       Logger.logss("Loading documents "+mentionType+" "+path)
       if (mentionType == "old") {
@@ -258,7 +260,7 @@ object WikipediaInterface {
           }
         })
       } else {
-        throw new RuntimeException("Unrecognized mention type: " + WikipediaInterface.mentionType);
+        throw new RuntimeException("Unrecognized mention type: " + WikipediaInterface_static.mentionType);
       }
     }).filter(_!=null);
 //    val queries = corefDocs.flatMap(_.predMentions.filter(!_.mentionType.isClosedClass)).flatMap(ment => WikipediaTitleGivenSurfaceDB.extractQueries(ment, ment.headIdx)).toSet;
@@ -266,15 +268,15 @@ object WikipediaInterface {
     // MFL TODO: this is the queries that will have to be rewritten to support the wiki documents.
     val queries = corefDocs.flatMap(_.predMentions.filter(!_.mentionType.isClosedClass)).flatMap(ment => Query.extractQueriesBest(ment).map(_.getFinalQueryStr)).toSet;
     Logger.logss("Extracted " + queries.size + " queries from " + corefDocs.size + " documents");
-    val interface = if (WikipediaInterface.categoryDBInputPath != "") {
-      val categoryDB = GUtil.load(WikipediaInterface.categoryDBInputPath).asInstanceOf[WikipediaCategoryDB];
-      processWikipedia(WikipediaInterface.wikipediaDumpPath, queries, categoryDB);
+    val interface = if (WikipediaInterface_static.categoryDBInputPath != "") {
+      val categoryDB = GUtil.load(WikipediaInterface_static.categoryDBInputPath).asInstanceOf[WikipediaCategoryDB];
+      processWikipedia(WikipediaInterface_static.wikipediaDumpPath, queries, categoryDB);
     } else {
-      processWikipedia(WikipediaInterface.wikipediaDumpPath, queries, parser, backoffParser);
+      processWikipedia(WikipediaInterface_static.wikipediaDumpPath, queries, parser, backoffParser);
     } 
-    GUtil.save(interface, WikipediaInterface.outputPath);
-    if (WikipediaInterface.categoryDBOutputPath != "") {
-      GUtil.save(interface.categoryDB, WikipediaInterface.categoryDBOutputPath);
+    GUtil.save(interface, WikipediaInterface_static.outputPath);
+    if (WikipediaInterface_static.categoryDBOutputPath != "") {
+      GUtil.save(interface.categoryDB, WikipediaInterface_static.categoryDBOutputPath);
     }
     LightRunner.finalizeOutput();
   }

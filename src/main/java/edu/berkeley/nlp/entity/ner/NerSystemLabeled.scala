@@ -18,7 +18,7 @@ import scala.collection.mutable.HashMap
 import edu.berkeley.nlp.entity.lang.Language
 import scala.util.Random
 import edu.berkeley.nlp.math.SloppyMath
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface_static
 import edu.berkeley.nlp.entity.coref.UID
 import edu.berkeley.nlp.entity.sem.BrownClusterInterface
 

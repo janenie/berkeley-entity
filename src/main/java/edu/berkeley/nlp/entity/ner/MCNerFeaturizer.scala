@@ -1,7 +1,7 @@
 package edu.berkeley.nlp.entity.ner
 
 import edu.berkeley.nlp.futile.fig.basic.Indexer
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface_static
 import edu.berkeley.nlp.futile.util.Counter
 import edu.berkeley.nlp.futile.util.Logger
 import scala.collection.JavaConverters._
@@ -12,7 +12,7 @@ class MCNerFeaturizer(val featureSet: Set[String],
                       val featureIndexer: Indexer[String],
                       val labelIndexer: Indexer[String],
                       val corpusCounts: CorpusCounts,
-                      val wikipediaDB: Option[WikipediaInterface] = None,
+                      val wikipediaDB: Option[WikipediaInterface_static] = None,
                       val brownClusters: Option[Map[String,String]] = None) extends Serializable {
   Logger.logss(labelIndexer.getObjects.asScala.toSeq + " label indices");
   val nerFeaturizer = new NerFeaturizer(featureSet, featureIndexer, labelIndexer, corpusCounts, wikipediaDB, brownClusters);
@@ -41,7 +41,7 @@ object MCNerFeaturizer {
             featureIndexer: Indexer[String],
             labelIndexer: Indexer[String],
             rawSents: Seq[Seq[String]],
-            wikipediaDB: Option[WikipediaInterface],
+            wikipediaDB: Option[WikipediaInterface_static],
             brownClusters: Option[Map[String,String]],
             unigramThreshold: Int = 1,
             bigramThreshold: Int = 10,
