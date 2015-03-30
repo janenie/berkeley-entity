@@ -7,6 +7,8 @@ import scalikejdbc._
  */
 class WikipediaInterface_db (conn : String) {
 
+
+  Class.forName("org.postgresql.Driver")
   val settings = ConnectionPoolSettings(
     initialSize = 5,
     maxSize = 20,
@@ -14,8 +16,10 @@ class WikipediaInterface_db (conn : String) {
     validationQuery = "select 1")
   ConnectionPool.add(this, conn, "wiki", "wiki", settings)
 
-  NamedDB(this) localTx { implicit session =>
-    sql"select 1".map(a=>a).single.apply()
+  using(DB(ConnectionPool.borrow(this))) { db =>
+    db localTx { implicit session =>
+      SQL("select 1 as i").map(r=>r.int(0)).single.apply()
+    }
   }
 
   def disambigRes(query: Query) = {
