@@ -20,7 +20,7 @@ import edu.berkeley.nlp.entity.joint.JointDocACE
 import edu.berkeley.nlp.entity.joint.JointFeaturizerShared
 import edu.berkeley.nlp.entity.joint.JointLossFcns
 import edu.berkeley.nlp.entity.wiki.WikificationEvaluator
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface_static
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface
 import edu.berkeley.nlp.entity.lang.Language
 import edu.berkeley.nlp.entity.ner.MCNerFeaturizer
 import edu.berkeley.nlp.entity.ner.NEEvaluator

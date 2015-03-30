@@ -16,7 +16,7 @@ import edu.berkeley.nlp.entity.coref.CorefEvaluator
 import edu.berkeley.nlp.entity.ner.NerPrunerFromMarginals
 import edu.berkeley.nlp.entity.coref.DocumentGraph
 import edu.berkeley.nlp.entity.joint.FactorGraphFactoryACE
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface_static
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface
 import edu.berkeley.nlp.entity.joint.FactorGraphFactoryOnto
 import edu.berkeley.nlp.entity.joint.JointPredictor
 import edu.berkeley.nlp.entity.ner.MCNerFeaturizer
@@ -181,7 +181,7 @@ object EntitySystem {
     val jointPredictor = GUtil.load(modelPath).asInstanceOf[JointPredictor];
     val numberGenderComputer = NumberGenderComputer.readBergsmaLinData(Driver.numberGenderDataPath);
     val mentionPropertyComputer = new MentionPropertyComputer(Some(numberGenderComputer));
-    val maybeWikipediaInterface: Option[WikipediaInterface_static] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface_static]) else None;
+    val maybeWikipediaInterface: Option[WikipediaInterface] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface]) else None;
     val jointDocs = preprocessDocsForDecode(path, size, Driver.docSuffix, mentionPropertyComputer, jointPredictor.nerPruner, jointPredictor.corefPruner);
     jointPredictor.decodeWriteOutput(jointDocs, maybeWikipediaInterface, Driver.doConllPostprocessing);
   }
@@ -190,7 +190,7 @@ object EntitySystem {
     val jointPredictor = GUtil.load(modelPath).asInstanceOf[JointPredictor];
     val numberGenderComputer = NumberGenderComputer.readBergsmaLinData(Driver.numberGenderDataPath);
     val mentionPropertyComputer = new MentionPropertyComputer(Some(numberGenderComputer));
-    val maybeWikipediaInterface: Option[WikipediaInterface_static] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface_static]) else None;
+    val maybeWikipediaInterface: Option[WikipediaInterface] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface]) else None;
     val jointDocs = preprocessDocsForEval(path, size, mentionPropertyComputer, jointPredictor.nerPruner, jointPredictor.corefPruner);
     jointPredictor.decodeWriteOutputEvaluate(jointDocs, maybeWikipediaInterface, Driver.doConllPostprocessing);
   }
@@ -213,7 +213,7 @@ object EntitySystem {
     val maybeBrownClusters = if (Driver.brownPath != "") Some(BrownClusterInterface.loadBrownClusters(Driver.brownPath, 0)) else None
     val nerFeaturizer = NerFeaturizer(Driver.nerFeatureSet.split("\\+").toSet, featureIndexer, NerSystemLabeled.StdLabelIndexer, jointDocs.flatMap(_.rawDoc.words), None, maybeBrownClusters);
     val jointFeaturizer = buildFeaturizerShared(jointDocs.map(_.docGraph.corefDoc), featureIndexer, nerFeaturizer, maybeBrownClusters);
-    val maybeWikipediaInterface: Option[WikipediaInterface_static] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface_static]) else None;
+    val maybeWikipediaInterface: Option[WikipediaInterface] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface]) else None;
     
     
     ///////////////////////
@@ -309,7 +309,7 @@ object EntitySystem {
     val jointPredictor = GUtil.load(modelPath).asInstanceOf[JointPredictorACE];
     val numberGenderComputer = NumberGenderComputer.readBergsmaLinData(Driver.numberGenderDataPath);
     val mentionPropertyComputer = new MentionPropertyComputer(Some(numberGenderComputer));
-    val maybeWikipediaInterface: Option[WikipediaInterface_static] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface_static]) else None;
+    val maybeWikipediaInterface: Option[WikipediaInterface] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface]) else None;
     val jointDocs = preprocessACEDocsForDecode(path, size, Driver.docSuffix, mentionPropertyComputer, jointPredictor.corefPruner);
     jointPredictor.decodeWriteOutput(jointDocs, maybeWikipediaInterface, Driver.doConllPostprocessing);
   }
@@ -318,7 +318,7 @@ object EntitySystem {
     val jointPredictor = GUtil.load(modelPath).asInstanceOf[JointPredictorACE];
     val numberGenderComputer = NumberGenderComputer.readBergsmaLinData(Driver.numberGenderDataPath);
     val mentionPropertyComputer = new MentionPropertyComputer(Some(numberGenderComputer));
-    val maybeWikipediaInterface: Option[WikipediaInterface_static] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface_static]) else None;
+    val maybeWikipediaInterface: Option[WikipediaInterface] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface]) else None;
     val jointDocs = preprocessACEDocsForTrainEval(path, size, mentionPropertyComputer, jointPredictor.corefPruner, Driver.wikiGoldPath, false);
     jointPredictor.decodeWriteOutputEvaluate(jointDocs, maybeWikipediaInterface, Driver.doConllPostprocessing);
   }
@@ -339,7 +339,7 @@ object EntitySystem {
     val maybeBrownClusters = if (Driver.brownPath != "") Some(BrownClusterInterface.loadBrownClusters(Driver.brownPath, 0)) else None
     val nerFeaturizer = MCNerFeaturizer(Driver.nerFeatureSet.split("\\+").toSet, featureIndexer, MCNerFeaturizer.StdLabelIndexer, jointDocs.flatMap(_.rawDoc.words), None, maybeBrownClusters)
     val jointFeaturizer = buildFeaturizerShared(jointDocs.map(_.docGraph.corefDoc), featureIndexer, nerFeaturizer, maybeBrownClusters);
-    val maybeWikipediaInterface: Option[WikipediaInterface_static] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface_static]) else None;
+    val maybeWikipediaInterface: Option[WikipediaInterface] = if (Driver.wikipediaPath != "") Some(GUtil.load(Driver.wikipediaPath).asInstanceOf[WikipediaInterface]) else None;
     
     ///////////////////////
     // Cache features

@@ -49,7 +49,7 @@ object ACETester {
     }
     
     
-    val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface_static];
+    val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface];
     val wikifier = new BasicWikifier(wikiDB, Some(queryChooser));
     
 //    val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface];

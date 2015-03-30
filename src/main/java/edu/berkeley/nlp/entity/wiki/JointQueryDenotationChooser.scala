@@ -36,7 +36,7 @@ case class JointQueryDenotationExample(val queries: Seq[Query],
  * likelihoods, computes gradients, and computes the best denotation for an example given a set of
  * parameters.
  */
-class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface_static,
+class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
                                          val featureIndexer: Indexer[String]) extends LikelihoodAndGradientComputer[JointQueryDenotationExample] {
   // Used for feature computation
   val queryChooser = new QueryChoiceComputer(wikiDB, featureIndexer)
@@ -143,7 +143,7 @@ class JointQueryDenotationChooser(val featureIndexer: Indexer[String],
     computer.computeDenotation(ex, weights)
   }*/
 
-  def pickDenotations(queries: Seq[Query], wikiDB: WikipediaInterface_static) : Seq[String] = {
+  def pickDenotations(queries: Seq[Query], wikiDB: WikipediaInterface) : Seq[String] = {
     val computer = new JointQueryDenotationChoiceComputer(wikiDB, featureIndexer);
     val denotations = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val dden = Query.extractDenotationSetWithNil(queries, denotations, JointQueryDenotationChooser.maxNumWikificationOptions)
@@ -153,7 +153,7 @@ class JointQueryDenotationChooser(val featureIndexer: Indexer[String],
     ex.allDenotations.zipWithIndex.sortBy(v => denotationMarginals(v._2)).reverse.map(_._1)
   }
 
-  def diffFeatures(correct: Query, choosen: Query, wikiDB: WikipediaInterface_static) = {
+  def diffFeatures(correct: Query, choosen: Query, wikiDB: WikipediaInterface) = {
 
   }
 }
@@ -164,7 +164,7 @@ object JointQueryDenotationChooser {
    * Extracts an isolated set of entity linking examples from coreference documents
    * and standoff entity link annotations.
    */
-  def extractExamples(corefDocs: Seq[CorefDoc], goldWikification: CorpusWikiAnnots, wikiDB: WikipediaInterface_static, filterImpossible: Boolean = false) = {
+  def extractExamples(corefDocs: Seq[CorefDoc], goldWikification: CorpusWikiAnnots, wikiDB: WikipediaInterface, filterImpossible: Boolean = false) = {
     val exs = new ArrayBuffer[JointQueryDenotationExample];
     var numImpossible = 0;
     // Go through all mentions in all documents
@@ -259,7 +259,7 @@ object JointQueryDenotationChooser {
     // Read in gold Wikification labels
     val goldWikification = WikiAnnotReaderWriter.readStandoffAnnotsAsCorpusAnnots(wikiPath)
     // Read in the title given surface database
-    val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface_static];
+    val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface];
     // Make training examples, filtering out those with solutions that are unreachable because
     // they're not good for training
     val trainExs = extractExamples(trainCorefDocs, goldWikification, wikiDB, filterImpossible = true)

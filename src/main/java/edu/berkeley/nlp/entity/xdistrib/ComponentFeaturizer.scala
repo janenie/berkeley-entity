@@ -5,7 +5,7 @@ import scala.collection.mutable.ArrayBuffer
 import edu.berkeley.nlp.entity.coref.DocumentGraph
 import edu.berkeley.nlp.entity.coref.FeatureSetSpecification
 import edu.berkeley.nlp.entity.coref.LexicalCountsBundle
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface_static
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface
 import edu.berkeley.nlp.entity.sem.QueryCountsBundle
 import edu.berkeley.nlp.entity.sem.SemClasser
 import edu.berkeley.nlp.futile.fig.basic.Indexer
@@ -14,7 +14,7 @@ class ComponentFeaturizer(val componentIndexer: Indexer[String],
                           val featureSet: FeatureSetSpecification,
                           val lexicalCounts: LexicalCountsBundle,
                           val queryCounts: Option[QueryCountsBundle],
-                          val wikipediaInterface: Option[WikipediaInterface_static],
+                          val wikipediaInterface: Option[WikipediaInterface],
                           val semClasser: Option[SemClasser]) {
 
   def featurizeComponents(docGraph: DocumentGraph, idx: Int, addToFeaturizer: Boolean): Array[Int] = {

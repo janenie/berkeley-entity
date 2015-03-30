@@ -32,7 +32,7 @@ import edu.berkeley.nlp.entity.wiki._
 
 class JointDocFactorGraphOnto(val doc: JointDoc,
                               val featurizer: JointFeaturizerShared[NerFeaturizer],
-                              val wikiDB: Option[WikipediaInterface_static],
+                              val wikiDB: Option[WikipediaInterface],
                               val gold: Boolean,
                               val addToIndexer: Boolean,
                               val corefLossFcn: (CorefDoc, Int, Int) => Float,

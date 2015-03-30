@@ -35,7 +35,7 @@ import edu.berkeley.nlp.futile.util.Counter
 
 class JointDocFactorGraphACE(val doc: JointDocACE,
                              val featurizer: JointFeaturizerShared[MCNerFeaturizer],
-                             val wikiDB: Option[WikipediaInterface_static],
+                             val wikiDB: Option[WikipediaInterface],
                              val gold: Boolean,
                              val addToIndexer: Boolean,
                              val corefLossFcn: (CorefDoc, Int, Int) => Float,

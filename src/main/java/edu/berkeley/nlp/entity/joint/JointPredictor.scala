@@ -17,7 +17,7 @@ import edu.berkeley.nlp.entity.coref.OrderedClustering
 import edu.berkeley.nlp.entity.lang.Language
 import edu.berkeley.nlp.entity.ner.NerFeaturizer
 import edu.berkeley.nlp.entity.ner.NerPruner
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface_static
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface
 import edu.berkeley.nlp.futile.fig.basic.IOUtils
 import edu.berkeley.nlp.futile.fig.exec.Execution
 import edu.berkeley.nlp.futile.util.Logger
@@ -31,15 +31,15 @@ class JointPredictor(val jointFeaturizer: JointFeaturizerShared[NerFeaturizer],
                      val corefPruner: CorefPruner,
                      val nerPruner: NerPruner) extends Serializable {
   
-  def decodeWriteOutput(jointTestDocs: Seq[JointDoc], maybeWikipediaInterface: Option[WikipediaInterface_static], doConllPostprocessing: Boolean) {
+  def decodeWriteOutput(jointTestDocs: Seq[JointDoc], maybeWikipediaInterface: Option[WikipediaInterface], doConllPostprocessing: Boolean) {
     decodeWriteOutputMaybeEvaluate(jointTestDocs, maybeWikipediaInterface, doConllPostprocessing, false);
   }
   
-  def decodeWriteOutputEvaluate(jointTestDocs: Seq[JointDoc], maybeWikipediaInterface: Option[WikipediaInterface_static], doConllPostprocessing: Boolean) {
+  def decodeWriteOutputEvaluate(jointTestDocs: Seq[JointDoc], maybeWikipediaInterface: Option[WikipediaInterface], doConllPostprocessing: Boolean) {
     decodeWriteOutputMaybeEvaluate(jointTestDocs, maybeWikipediaInterface, doConllPostprocessing, true);
   }
 
-  private def decodeWriteOutputMaybeEvaluate(jointTestDocs: Seq[JointDoc], maybeWikipediaInterface: Option[WikipediaInterface_static], doConllPostprocessing: Boolean, evaluate: Boolean) {
+  private def decodeWriteOutputMaybeEvaluate(jointTestDocs: Seq[JointDoc], maybeWikipediaInterface: Option[WikipediaInterface], doConllPostprocessing: Boolean, evaluate: Boolean) {
     val fgfOnto = new FactorGraphFactoryOnto(jointFeaturizer, maybeWikipediaInterface);
     val computer = new JointComputerShared(fgfOnto);
     val outWriter = IOUtils.openOutHard(Execution.getFile("output.conll"))

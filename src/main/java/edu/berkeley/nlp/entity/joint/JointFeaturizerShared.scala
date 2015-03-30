@@ -152,7 +152,7 @@ class JointFeaturizerShared[T](val corefFeaturizer: PairwiseIndexingFeaturizer,
 //    feats.toArray;
 //  }
   
-  def getWikiNerFeatures(docGraph: DocumentGraph, currIdx: Int, wikiTitle: String, nerSymbol: String, wikiDB: Option[WikipediaInterface_static], addToIndexer: Boolean) = {
+  def getWikiNerFeatures(docGraph: DocumentGraph, currIdx: Int, wikiTitle: String, nerSymbol: String, wikiDB: Option[WikipediaInterface], addToIndexer: Boolean) = {
     val feats = new ArrayBuffer[Int];
     val currMent = docGraph.getMention(currIdx);
     if (wikiTitle != NilToken) {
@@ -187,7 +187,7 @@ class JointFeaturizerShared[T](val corefFeaturizer: PairwiseIndexingFeaturizer,
     feats.toArray;
   }
   
-  def getCorefWikiFeatures(docGraph: DocumentGraph, currIdx: Int, antIdx: Int, wikiTitle: String, prevWikiTitle: String, wikiDB: Option[WikipediaInterface_static], addToIndexer: Boolean) = {
+  def getCorefWikiFeatures(docGraph: DocumentGraph, currIdx: Int, antIdx: Int, wikiTitle: String, prevWikiTitle: String, wikiDB: Option[WikipediaInterface], addToIndexer: Boolean) = {
     val feats = new ArrayBuffer[Int];
     val currMent = docGraph.getMention(currIdx);
     val antMent = docGraph.getMention(antIdx);

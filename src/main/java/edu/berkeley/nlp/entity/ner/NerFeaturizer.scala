@@ -5,7 +5,7 @@ import edu.berkeley.nlp.futile.fig.basic.Indexer
 import edu.berkeley.nlp.futile.util.Counter
 import edu.berkeley.nlp.futile.util.Logger
 import edu.berkeley.nlp.entity.GUtil
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface_static
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface
 import scala.collection.mutable.HashSet
 
 @SerialVersionUID(1L)
@@ -13,7 +13,7 @@ class NerFeaturizer(val featureSet: Set[String],
                     val featureIndexer: Indexer[String],
                     val labelIndexer: Indexer[String],
                     val corpusCounts: CorpusCounts,
-                    val wikipediaDB: Option[WikipediaInterface_static] = None,
+                    val wikipediaDB: Option[WikipediaInterface] = None,
                     val brownClusters: Option[Map[String,String]] = None) extends Serializable {
   val useBrown = brownClusters.isDefined;
   val useBackoffs = featureSet.contains("backoff");
@@ -140,7 +140,7 @@ object NerFeaturizer {
             featureIndexer: Indexer[String],
             labelIndexer: Indexer[String],
             rawSents: Seq[Seq[String]],
-            wikipediaDB: Option[WikipediaInterface_static],
+            wikipediaDB: Option[WikipediaInterface],
             brownClusters: Option[Map[String,String]],
             unigramThreshold: Int = 1,
             bigramThreshold: Int = 10,

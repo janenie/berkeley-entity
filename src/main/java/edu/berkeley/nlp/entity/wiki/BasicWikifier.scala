@@ -13,7 +13,7 @@ import edu.berkeley.nlp.entity.GUtil
 import edu.berkeley.nlp.entity.coref.MentionType
 import edu.berkeley.nlp.futile.fig.basic.Indexer
 
-class BasicWikifier(val wikiDB: WikipediaInterface_static,
+class BasicWikifier(val wikiDB: WikipediaInterface,
                     val queryChooser: Option[QueryChooser] = None,
                     val trainingDocs: Option[Seq[CorefDoc]] = None,
                     val trainingWikiAnnots: Option[CorpusWikiAnnots] = None,

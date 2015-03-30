@@ -24,7 +24,7 @@ case class QueryChoiceExample(val queries: Seq[Query],
   var cachedFeatsEachQuery: Array[Array[Int]] = null;
 }
 
-class QueryChoiceComputer(val wikiDB: WikipediaInterface_static,
+class QueryChoiceComputer(val wikiDB: WikipediaInterface,
                           val featureIndexer: Indexer[String]) extends LikelihoodAndGradientComputer[QueryChoiceExample] {
   
   def addFeat(feat: String, feats: ArrayBuffer[Int], addToIndexer: Boolean) {
@@ -233,7 +233,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface_static,
 class QueryChooser(val featureIndexer: Indexer[String],
                    val weights: Array[Float]) extends Serializable {
 
-  def pickQuery(queries: Seq[Query], wikiDB: WikipediaInterface_static): Query = {
+  def pickQuery(queries: Seq[Query], wikiDB: WikipediaInterface): Query = {
     val qcComputer = new QueryChoiceComputer(wikiDB, featureIndexer);
     val denotations = queries.map(query => wikiDB.disambiguateBestNoDisambig(query));
     val ex = new QueryChoiceExample(queries, denotations, Array[Int]());
@@ -252,7 +252,7 @@ object QueryChooser {
     new QueryChooser(fi, Array(1F, -1F))
   }
   
-  def extractExamples(corefDocs: Seq[CorefDoc], goldWikification: CorpusWikiAnnots, wikiDB: WikipediaInterface_static) = {
+  def extractExamples(corefDocs: Seq[CorefDoc], goldWikification: CorpusWikiAnnots, wikiDB: WikipediaInterface) = {
     val exs = new ArrayBuffer[QueryChoiceExample];
     var numImpossible = 0;
     for (corefDoc <- corefDocs) {
@@ -288,7 +288,7 @@ object QueryChooser {
 //    val wikiAnnotsPath = "data/ace05/ace-annots-multi.ser"
 //    val goldWikification = GUtil.load(wikiAnnotsPath).asInstanceOf[CorpusWikiAnnots];
     val goldWikification = WikiAnnotReaderWriter.readStandoffAnnotsAsCorpusAnnots(wikiPath)
-    val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface_static];
+    val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface];
     
     val assembler = CorefDocAssembler(Language.ENGLISH, true);
     val trainDocs = ConllDocReader.loadRawConllDocsWithSuffix(trainDataPath, -1, "", Language.ENGLISH);
@@ -326,7 +326,7 @@ object QueryChooser {
     LightRunner.finalizeOutput();
   }
   
-  def evaluate(testExs: Seq[QueryChoiceExample], qcComputer: QueryChoiceComputer, weights: Array[Float], wikiDB: WikipediaInterface_static, print: Boolean = false) {
+  def evaluate(testExs: Seq[QueryChoiceExample], qcComputer: QueryChoiceComputer, weights: Array[Float], wikiDB: WikipediaInterface, print: Boolean = false) {
     var numCorrect = 0;
     var numCorrectNil = 0;
     var numNil = 0;

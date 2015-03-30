@@ -4,7 +4,7 @@ import edu.berkeley.nlp.futile.util.Counter
 import edu.berkeley.nlp.futile.util.Logger
 import scala.collection.JavaConverters._
 import edu.berkeley.nlp.entity.sem.QueryCountsBundle
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface_static
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface
 
 trait PairwiseIndexingFeaturizer {
   

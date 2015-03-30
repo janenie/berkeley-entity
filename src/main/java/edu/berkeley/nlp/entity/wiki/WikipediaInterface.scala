@@ -52,11 +52,11 @@ import edu.berkeley.nlp.entity.wiki._
  * @author gdurrett
  */
 @SerialVersionUID(1L)
-class WikipediaInterface_static(val titleGivenSurfaceDB: WikipediaTitleGivenSurfaceDB,
+class WikipediaInterface(val titleGivenSurfaceDB: WikipediaTitleGivenSurfaceDB,
                          val redirectsDB: WikipediaRedirectsDB,
                          val categoryDB: WikipediaCategoryDB,
                          val linksDB: WikipediaLinkDB,
-                         val auxDB: WikipediaAuxDB) extends Serializable with WikipediaInterface2 {
+                         val auxDB: WikipediaAuxDB) extends Serializable {
   
   override def getStandardPriorForJointModel(ment: Mention) = {
     val counter = new Counter[String];
@@ -158,7 +158,7 @@ class WikipediaInterface_static(val titleGivenSurfaceDB: WikipediaTitleGivenSurf
   def getStandardPriorForJointModel(ment: Any): Counter[String] = ???
 }
 
-object WikipediaInterface_static {
+object WikipediaInterface {
   
   val MaxSnippetChars = 1000;
   
@@ -178,33 +178,33 @@ object WikipediaInterface_static {
   val categoryDBInputPath = "";
   val categoryDBOutputPath = "";
   
-  def processWikipedia(wikipediaPath: String, queries: Set[String], parser: CoarseToFineMaxRuleParser, backoffParser: CoarseToFineMaxRuleParser): WikipediaInterface_static = {
+  def processWikipedia(wikipediaPath: String, queries: Set[String], parser: CoarseToFineMaxRuleParser, backoffParser: CoarseToFineMaxRuleParser): WikipediaInterface = {
     val titleGivenSurface = WikipediaTitleGivenSurfaceDB.processWikipedia(wikipediaPath, queries);
     val redirects = WikipediaRedirectsDB.processWikipedia(wikipediaPath, titleGivenSurface);
     val allPageTargetsLc = titleGivenSurface.allPossibleTitlesLowercase.toSet ++ redirects.possibleRedirectTargetsLc;
-    val links = if (WikipediaInterface_static.computeLinkDB) {
+    val links = if (WikipediaInterface.computeLinkDB) {
       WikipediaLinkDB.processWikipedia(wikipediaPath, allPageTargetsLc);
     } else {
       new WikipediaLinkDB(new Indexer[String], new HashMap[String,Array[Int]], new HashMap[String,Array[Int]]);
     }
     val categories = WikipediaCategoryDB.processWikipedia(wikipediaPath, allPageTargetsLc, parser, backoffParser);
     val aux = WikipediaAuxDB.processWikipedia(wikipediaPath, allPageTargetsLc);
-    val wi = new WikipediaInterface_static(titleGivenSurface, redirects, categories, links, aux);
+    val wi = new WikipediaInterface(titleGivenSurface, redirects, categories, links, aux);
     wi.printSome();
     wi;
   }
   
-  def processWikipedia(wikipediaPath: String, queries: Set[String], categoryDB: WikipediaCategoryDB): WikipediaInterface_static = {
+  def processWikipedia(wikipediaPath: String, queries: Set[String], categoryDB: WikipediaCategoryDB): WikipediaInterface = {
     val titleGivenSurface = WikipediaTitleGivenSurfaceDB.processWikipedia(wikipediaPath, queries);
     val redirects = WikipediaRedirectsDB.processWikipedia(wikipediaPath, titleGivenSurface);
     val allPageTargetsLc = titleGivenSurface.allPossibleTitlesLowercase.toSet ++ redirects.possibleRedirectTargetsLc;
-    val links = if (WikipediaInterface_static.computeLinkDB) {
+    val links = if (WikipediaInterface.computeLinkDB) {
       WikipediaLinkDB.processWikipedia(wikipediaPath, allPageTargetsLc);
     } else {
       new WikipediaLinkDB(new Indexer[String], new HashMap[String,Array[Int]], new HashMap[String,Array[Int]]);
     }
     val aux = WikipediaAuxDB.processWikipedia(wikipediaPath, allPageTargetsLc);
-    val wi = new WikipediaInterface_static(titleGivenSurface, redirects, categoryDB, links, aux);
+    val wi = new WikipediaInterface(titleGivenSurface, redirects, categoryDB, links, aux);
     wi.printSome();
     wi;
   }
@@ -212,14 +212,14 @@ object WikipediaInterface_static {
 //  def getWikipediaInterface
   
   def main(args: Array[String]) {
-    LightRunner.initializeOutput(WikipediaInterface_static.getClass);
-    LightRunner.populateScala(WikipediaInterface_static.getClass, args);
+    LightRunner.initializeOutput(WikipediaInterface.getClass);
+    LightRunner.populateScala(WikipediaInterface.getClass, args);
 //    WikipediaInterface.populate(args);
-    val (parser, backoffParser): (CoarseToFineMaxRuleParser, CoarseToFineMaxRuleParser) = if (WikipediaInterface_static.loadParsers) {
+    val (parser, backoffParser): (CoarseToFineMaxRuleParser, CoarseToFineMaxRuleParser) = if (WikipediaInterface.loadParsers) {
       Logger.logss("Loading parser");
-      val parser = PreprocessingDriver.loadParser(WikipediaInterface_static.parserModelPath);
+      val parser = PreprocessingDriver.loadParser(WikipediaInterface.parserModelPath);
       Logger.logss("Loading backoff parser");
-      val backoffParser = PreprocessingDriver.loadParser(WikipediaInterface_static.backoffParserModelPath);
+      val backoffParser = PreprocessingDriver.loadParser(WikipediaInterface.backoffParserModelPath);
       (parser, backoffParser)
     } else {
       (null, null)
@@ -228,14 +228,14 @@ object WikipediaInterface_static {
     val mentionPropertyComputer = new MentionPropertyComputer(None);
     val pmAssembler = CorefDocAssembler(Language.ENGLISH, useGoldMentions = false);
     val gmAssembler = CorefDocAssembler(Language.ENGLISH, useGoldMentions = true);
-    val corefDocs = WikipediaInterface_static.datasetPaths.split(",").flatMap(path_ => {
+    val corefDocs = WikipediaInterface.datasetPaths.split(",").flatMap(path_ => {
       var path = path_
       val mentionType = if(path.contains(":")) {
         val s = path.split(":")
         path = s(1)
         s(0)
       } else {
-        WikipediaInterface_static.mentionType
+        WikipediaInterface.mentionType
       }
       Logger.logss("Loading documents "+mentionType+" "+path)
       if (mentionType == "old") {
@@ -260,7 +260,7 @@ object WikipediaInterface_static {
           }
         })
       } else {
-        throw new RuntimeException("Unrecognized mention type: " + WikipediaInterface_static.mentionType);
+        throw new RuntimeException("Unrecognized mention type: " + WikipediaInterface.mentionType);
       }
     }).filter(_!=null);
 //    val queries = corefDocs.flatMap(_.predMentions.filter(!_.mentionType.isClosedClass)).flatMap(ment => WikipediaTitleGivenSurfaceDB.extractQueries(ment, ment.headIdx)).toSet;
@@ -268,15 +268,15 @@ object WikipediaInterface_static {
     // MFL TODO: this is the queries that will have to be rewritten to support the wiki documents.
     val queries = corefDocs.flatMap(_.predMentions.filter(!_.mentionType.isClosedClass)).flatMap(ment => Query.extractQueriesBest(ment).map(_.getFinalQueryStr)).toSet;
     Logger.logss("Extracted " + queries.size + " queries from " + corefDocs.size + " documents");
-    val interface = if (WikipediaInterface_static.categoryDBInputPath != "") {
-      val categoryDB = GUtil.load(WikipediaInterface_static.categoryDBInputPath).asInstanceOf[WikipediaCategoryDB];
-      processWikipedia(WikipediaInterface_static.wikipediaDumpPath, queries, categoryDB);
+    val interface = if (WikipediaInterface.categoryDBInputPath != "") {
+      val categoryDB = GUtil.load(WikipediaInterface.categoryDBInputPath).asInstanceOf[WikipediaCategoryDB];
+      processWikipedia(WikipediaInterface.wikipediaDumpPath, queries, categoryDB);
     } else {
-      processWikipedia(WikipediaInterface_static.wikipediaDumpPath, queries, parser, backoffParser);
+      processWikipedia(WikipediaInterface.wikipediaDumpPath, queries, parser, backoffParser);
     } 
-    GUtil.save(interface, WikipediaInterface_static.outputPath);
-    if (WikipediaInterface_static.categoryDBOutputPath != "") {
-      GUtil.save(interface.categoryDB, WikipediaInterface_static.categoryDBOutputPath);
+    GUtil.save(interface, WikipediaInterface.outputPath);
+    if (WikipediaInterface.categoryDBOutputPath != "") {
+      GUtil.save(interface.categoryDB, WikipediaInterface.categoryDBOutputPath);
     }
     LightRunner.finalizeOutput();
   }
