@@ -22,15 +22,21 @@ import edu.berkeley.nlp.entity.joint.GeneralTrainer
 case class JointQueryDenotationExample(val queries: Seq[Query],
                                        val allDenotations: Seq[String],
                                        val correctDenotations: Seq[String],
-                                       val rawCorrectDenotations: Seq[String]) {
-  
-  val correctDenotationIndices = allDenotations.zipWithIndex.filter(denotationAndIdx => correctDenotations.contains(denotationAndIdx._1)).map(_._2) 
-  
+                                       val rawCorrectDenotations: Seq[String],
+                                       val allDocDenotations: Seq[String]) {
+
+  val correctDenotationIndices = allDenotations.zipWithIndex.filter(denotationAndIdx => correctDenotations.contains(denotationAndIdx._1)).map(_._2)
+
   // Feature caches since feature computation is expensive if redone every time
   var cachedFeatsEachQuery: Array[Array[Int]] = null;
   var cachedFeatsEachQueryDenotation: Array[Array[Array[Int]]] = null;
 
   def document = queries.head.originalMent.rawDoc
+
+  // return a set of other links that are from other documents
+  // TODO: this isn't quite right, as if another links is to the same document we will filter it
+  // whereas the origional wikification system would have keep it
+  def otherLinks = allDocDenotations.filter(!correctDenotations.contains(_))
 }
 
 /**
@@ -43,20 +49,20 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
   // Used for feature computation
   val queryChooser = new QueryChoiceComputer(wikiDB, featureIndexer)
 
-  def featurizeUseCache(ex: JointQueryDenotationExample, addToIndexer: Boolean) {
+  def featurizeUseCache(ex: JointQueryDenotationExample, addToIndexer: Boolean, useGoldKnowledge: Boolean) {
     if (ex.cachedFeatsEachQuery == null) {
       if(ex.document.documentVectorCache == null)
         ex.document.documentVectorCache = wikiDB.textDB.makeVector(ex.document.words)
       ex.cachedFeatsEachQuery = queryChooser.featurizeQueries(ex.queries, addToIndexer)
-      ex.cachedFeatsEachQueryDenotation = queryChooser.featurizeQueriesAndDenotations_GLOW(ex.queries, ex.allDenotations, addToIndexer, wikiDB)
+      ex.cachedFeatsEachQueryDenotation = queryChooser.featurizeQueriesAndDenotations_GLOW(ex.queries, ex.allDenotations, addToIndexer, wikiDB, ex.otherLinks)
     }
   }
-  
+
   /**
    * Computes a score matrix for (query, denotation) pairs based on the computed features
    */
   def getUnnormalizedJointScores(ex: JointQueryDenotationExample, weights: Array[Float]): Array[Array[Float]] = {
-    featurizeUseCache(ex, false)
+    featurizeUseCache(ex, false, useGoldKnowledge = true) // TODO: change
     // each example will have a number of features associated with each query
     // each feature is an indicator, so we use the cache of the features indexes
     // and sum the values of the features
@@ -71,7 +77,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
     }
     scores
   }
-  
+
   /**
    * Computes denotation marginals (normalized, but still in log space). Query choice
    * gets marginalized out here.
@@ -86,15 +92,15 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
     (0 until rawDenotationMarginals.size).foreach(i => rawDenotationMarginals(i) -= normalizer)
     rawDenotationMarginals
   }
-  
+
   /**
    * Computes the gradient on the given example at the point specified by the given weight vector and adds it to the
-   * gradient array. 
+   * gradient array.
    */
   def addUnregularizedStochasticGradient(ex: JointQueryDenotationExample, weights: Array[Float], gradient: Array[Float]) {
     // False for adding features here, though it doesn't really matter; we'd better have cached all of them
     // in advance anyway to know how long the weight vector should be
-    val allFeats = featurizeUseCache(ex, false); 
+    val allFeats = featurizeUseCache(ex, false, useGoldKnowledge = true) // TODO: change to false
     val scores = getUnnormalizedJointScores(ex, weights)
     val logNormalizer = SloppyMath.logAdd(scores.map(SloppyMath.logAdd(_)))
     var goldLogNormalizer = Float.NegativeInfinity
@@ -113,7 +119,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
       }
     }
   }
-  
+
   /**
    * Computes the log likelihood. Since there are multiple correct answers, we have to take a sum.
    */
@@ -122,7 +128,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
     val correctScores = ex.correctDenotationIndices.map(denotationMarginals(_)).toArray;
     SloppyMath.logAdd(correctScores).toFloat;
   }
-  
+
   /**
    * Finds the highest-scoring denotation as the answer
    */
@@ -139,7 +145,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
  */
 class JointQueryDenotationChooser(val featureIndexer: Indexer[String],
                                   val weights: Array[Float]) extends Serializable {
-  
+
   /*def pickDenotation(queries: Seq[Query], wikiDB: WikipediaInterface): String = {
     val computer = new JointQueryDenotationChoiceComputer(wikiDB, featureIndexer);
     val denotations = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
@@ -147,23 +153,23 @@ class JointQueryDenotationChooser(val featureIndexer: Indexer[String],
     computer.computeDenotation(ex, weights)
   }*/
 
-  def pickDenotations(queries: Seq[Query], wikiDB: WikipediaInterface) : (Seq[(String, Int)], Array[Array[Int]]) = {
+  def pickDenotations(queries: Seq[Query], wikiDB: WikipediaInterface, otherLinks: Seq[String]) : (Seq[(String, Int)], Array[Array[Int]]) = {
     val computer = new JointQueryDenotationChoiceComputer(wikiDB, featureIndexer);
     val denotations = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val dden = Query.extractDenotationSetWithNil(queries, denotations, JointQueryDenotationChooser.maxNumWikificationOptions)
-    val ex = new JointQueryDenotationExample(queries, dden, Array[String](), Array[String]());
+    val ex = new JointQueryDenotationExample(queries, dden, Array[String](), Array[String](), otherLinks);
     val denotationMarginals = computer.getDenotationLogMarginals(ex, weights)
 
     (ex.allDenotations.zipWithIndex.sortBy(v => denotationMarginals(v._2)).reverse,
       ex.cachedFeatsEachQuery)
   }
 
-  def printEverything(queries: Seq[Query], wikiDB: WikipediaInterface, correctInd: Int) = {
+  def printEverything(queries: Seq[Query], wikiDB: WikipediaInterface, correctInd: Int, otherLinks: Seq[String]) = {
     // just redo the computations so gg
     val computer = new JointQueryDenotationChoiceComputer(wikiDB, featureIndexer);
     val denotations = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val dden = Query.extractDenotationSetWithNil(queries, denotations, JointQueryDenotationChooser.maxNumWikificationOptions)
-    val ex = new JointQueryDenotationExample(queries, dden, Array[String](), Array[String]());
+    val ex = new JointQueryDenotationExample(queries, dden, Array[String](), Array[String](), otherLinks);
     val denotationMarginals = computer.getDenotationLogMarginals(ex, weights)
 
     val sortedItms = ex.allDenotations.zipWithIndex.sortBy(v => denotationMarginals(v._2)).reverse
@@ -184,7 +190,7 @@ class JointQueryDenotationChooser(val featureIndexer: Indexer[String],
 }
 
 object JointQueryDenotationChooser {
-  
+
   /**
    * Extracts an isolated set of entity linking examples from coreference documents
    * and standoff entity link annotations.
@@ -195,15 +201,22 @@ object JointQueryDenotationChooser {
     // Go through all mentions in all documents
     for (corefDoc <- corefDocs) {
       val docName = corefDoc.rawDoc.docID
+      val allGold = corefDoc.predMentions.map(d => {
+        // There are multiple possible gold Wikipedia titles for some mentions. Note that
+        // NIL (no entry in Wikipedia) is included as an explicit choice, so this includes NILs (as
+        // it should according to how the task is defined)
+        val g = getGoldWikification(goldWikification(docName), d)
+        (g ++ g.map(wikiDB.redirectsDB.followRedirect(_))).distinct
+      })
+      val allGoldSet = allGold.flatMap(v => v).toSet.toSeq
       for (i <- 0 until corefDoc.predMentions.size) {
         // Discard "closed class" mentions (pronouns) since these don't have interesting entity links
         if (!corefDoc.predMentions(i).mentionType.isClosedClass()) {
           val ment = corefDoc.predMentions(i);
-          // There are multiple possible gold Wikipedia titles for some mentions. Note that
-          // NIL (no entry in Wikipedia) is included as an explicit choice, so this includes NILs (as
-          // it should according to how the task is defined)
-          val goldLabelp = getGoldWikification(goldWikification(docName), ment)
-          val goldLabel = (goldLabelp ++ goldLabelp.map(wikiDB.redirectsDB.followRedirect(_))).distinct
+
+          //val goldLabelp = getGoldWikification(goldWikification(docName), ment)
+          //val goldLabel = (goldLabelp ++ goldLabelp.map(wikiDB.redirectsDB.followRedirect(_))).distinct
+          val goldLabel = allGold(i)
           if (goldLabel.size >= 1) {
             //val oldqueries = Query.extractQueriesBest_old(ment, true);
             val queries = Query.extractQueriesBest(ment, true);
@@ -215,9 +228,9 @@ object JointQueryDenotationChooser {
             val queryDisambigs = queries.map(wikiDB.disambigRes(_))
             val denotations = Query.extractDenotationSetWithNil(queries, queryDisambigs, maxNumWikificationOptions);
             val correctDenotations = denotations.filter(denotation => isCorrect(goldLabel, denotation))
-            // N.B. The use of "isCorrect" here is needed to canonicalize 
+            // N.B. The use of "isCorrect" here is needed to canonicalize
             val correctIndices = denotations.zipWithIndex.filter(denotationIdx => isCorrect(goldLabel, denotationIdx._1)).map(_._2);
-//            if (correctIndices.isEmpty && 
+//            if (correctIndices.isEmpty &&
             if (filterImpossible && correctIndices.isEmpty) {
               numImpossible += 1;
               //println("impossible: "+goldLabel +"\n\tqueries: "+queries+"\n\tdisamb: "+queryDisambigs+"\n\tdentations: "+denotations)
@@ -225,7 +238,7 @@ object JointQueryDenotationChooser {
                 println("wtfwtf")
               }*/
             } else {
-              exs += new JointQueryDenotationExample(queries, denotations, correctDenotations, goldLabel)
+              exs += new JointQueryDenotationExample(queries, denotations, correctDenotations, goldLabel, allGoldSet)
             }
           }
         }
@@ -245,24 +258,24 @@ object JointQueryDenotationChooser {
     }
   }
 
-  
+
   val trainDataPath = "data/ace05/train";
   val testDataPath = "data/ace05/dev";
   val wikiPath = "data/ace05/ace05-all-conll-wiki" // contains the wiki links for both items
   val wikiDBPath = "models/wiki-db-ace.ser.gz"
-  
+
   val lambda = 1e-8F
   val batchSize = 1
   val numItrs = 20
-  
+
   val maxNumWikificationOptions = 20 //7
 
   val numLoadedSamples = -1 // for debugging by loading less samples
-  
+
   def main(args: Array[String]) {
     LightRunner.initializeOutput(JointQueryDenotationChooser.getClass());
     LightRunner.populateScala(JointQueryDenotationChooser.getClass(), args)
-    // Read in CoNLL documents 
+    // Read in CoNLL documents
     val assembler = CorefDocAssembler(Language.ENGLISH, true);
     val trainDocs = loadDocuments(trainDataPath);
     val trainCorefDocs = trainDocs.map(doc => {
@@ -295,15 +308,15 @@ object JointQueryDenotationChooser {
     val featIndexer = new Indexer[String]
     val computer = new JointQueryDenotationChoiceComputer(wikiDB, featIndexer);
     for (trainEx <- trainExs) {
-      computer.featurizeUseCache(trainEx, true);
+      computer.featurizeUseCache(trainEx, true, useGoldKnowledge = true);
     }
     Logger.logss(featIndexer.size + " features");
     // Train
     val gt = new GeneralTrainer[JointQueryDenotationExample]();
     val weights = gt.trainAdagrad(trainExs, computer, featIndexer.size, 1.0F, lambda, batchSize, numItrs);
-    
+
     val chooser = new JointQueryDenotationChooser(featIndexer, weights)
-    
+
     // Build the test examples and decode the test set
     // No filtering now because we're doing test
 
@@ -313,7 +326,8 @@ object JointQueryDenotationChooser {
 
     val results = testExs.map(t => {
       // TODO: need more then one perdicted title
-      val (picks, denFeats) = chooser.pickDenotations(t.queries, wikiDB)
+
+      val (picks, denFeats) = chooser.pickDenotations(t.queries, wikiDB, t.otherLinks) // TOOD: remove hack
       if(!isCorrect(t.rawCorrectDenotations, picks(0)._1)) {
         // the pick is not correct, attempt to determine if there would have
         // been a better pick that is in the picks list (which basically means all of the
@@ -334,7 +348,7 @@ object JointQueryDenotationChooser {
           }
         }
         if(qq != -1) {
-          chooser.printEverything(t.queries, wikiDB, qq)
+          chooser.printEverything(t.queries, wikiDB, qq, t.otherLinks)
           /*println(
             s"""Correct item in place: $qq
                 |\tcorrect value: ${picks(qq)}
@@ -352,7 +366,7 @@ object JointQueryDenotationChooser {
 
     val goldTestDenotationsAsTrivialChunks = (0 until results.size).map(i => new Chunk[Seq[String]](i, i+1, results(i)._1))
     val predTestDenotationsAsTrivialChunks = (0 until results.size).map(i => new Chunk[String](i, i+1, results(i)._2(0)))
-    
+
     // Hacky but lets us reuse some code that normally evaluates things with variable endpoints
 //    WikificationEvaluator.evaluateWikiChunksBySent(Seq(goldTestDenotationsAsTrivialChunks), Seq(predTestDenotationsAsTrivialChunks))
     WikificationEvaluator.evaluateFahrniMetrics(Seq(goldTestDenotationsAsTrivialChunks), Seq(predTestDenotationsAsTrivialChunks), Set())
@@ -365,5 +379,5 @@ object JointQueryDenotationChooser {
 
     LightRunner.finalizeOutput();
   }
-  
+
 }

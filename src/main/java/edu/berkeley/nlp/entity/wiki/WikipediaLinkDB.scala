@@ -103,6 +103,8 @@ class WikipediaLinkDB(private val pageNameIndex: Indexer[String],
     val outLinksTitle2 = getOutLinks(title2);
     outLinksTitle1.contains(ti2) || outLinksTitle2.contains(ti1)
   }
+
+  def getPageId(title: String) = pageNameIndex.indexOf(title)
 }
 
 object WikipediaLinkDB {

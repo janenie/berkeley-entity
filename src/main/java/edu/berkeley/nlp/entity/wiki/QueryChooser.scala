@@ -167,7 +167,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     ret
   }
 
-  /*def NGD[T](a: Set[T], b: Set[T], wsize: Int) : Double = {
+  def NGD[T](a: Set[T], b: Set[T], wsize: Int) : Double = {
     (logs(math.max(a.size, b.size)) - logs(intersectSize(a,b))) /
       (logs(wsize) - logs(math.min(a.size,b.size)))
   }
@@ -177,7 +177,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     // must be misunderstanding something
     (intersectSize(a,b) * wsize).asInstanceOf[Float] / (a.size * b.size)
   }
-
+/*
   def GLOWfeatures[T](fn: (Set[T], Set[T], Int) => Double, refs: Seq[Set[T]], prefix: String): Seq[Array[String]] = {
     val rsize = refs.size
     val wsize = unionSize(refs:_*)
@@ -229,14 +229,64 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     }
   }*/
 
-  def featurizeQueriesAndDenotations_GLOW(queries: Seq[Query], denotations: Seq[String], addToIndexer: Boolean, wikiDB: WikipediaInterface): Array[Array[Array[Int]]] = {
+  def featurizeQueriesAndDenotations_GLOW(queries: Seq[Query], denotations: Seq[String], addToIndexer: Boolean, wikiDB: WikipediaInterface, goldKnowledgeSet: Seq[String]): Array[Array[Array[Int]]] = {
     val queryOutcomes = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val queryNonemptyList = queryOutcomes.map(_.isEmpty);
     val ment = queries.head.originalMent;
     val mentUpToHeadSize = ment.headIdx - ment.startIdx + 1;
-    /*val (refLinksIn, refLinksOut) = getDentationLinksSets(denotations, wikiDB)
+    //val doc = ment.rawDoc
 
-    val PMINGDvals = Seq(
+    val (otherGoldLinksIn, otherGoldLinksOut) = getDentationLinksSets(goldKnowledgeSet, wikiDB)
+
+    // TODO: it appears that there are some possible denotations that have no in/out links
+    // which must mean that there is an issue with the wikipedia query extracting system
+    val (refLinksIn, refLinksOut) = getDentationLinksSets(denotations, wikiDB)
+
+    val totalTitles = otherGoldLinksIn.reduce(_ | _) | otherGoldLinksOut.reduce(_ | _) | refLinksIn.reduce(_ | _) | refLinksOut.reduce(_ | _)
+
+    val linkInd = denotations.map(d => {
+      val id = wikiDB.linksDB.getPageId(d.replace(" ", "_"))
+      (otherGoldLinksIn.map(_.contains(id)), otherGoldLinksOut.map(_.contains(id)))
+    })
+
+    val pmingdvals = for(den <- 0 until denotations.size) yield {
+      val vector = new Array[Double](9) // idk sum this or something
+      // TODO: include the max in here somehow
+      //val maxv = new Array[Double](9)
+      for (other <- 0 until otherGoldLinksIn.size) {
+        val ind1 = linkInd(den)._1(other) // point at this
+        val ind2 = ind1 && linkInd(den)._2(other) // point at eachother
+        if(ind1) {
+          val pmiIn = PMI(refLinksIn(den), otherGoldLinksIn(other), totalTitles.size)
+          val ngdIn = NGD(refLinksIn(den), otherGoldLinksIn(other), totalTitles.size)
+          val pmiOut = PMI(refLinksOut(den), otherGoldLinksOut(other), totalTitles.size)
+          val ngdOut = NGD(refLinksOut(den), otherGoldLinksOut(other), totalTitles.size)
+          //if(ind1) {
+          vector(0) += pmiIn
+          vector(1) += ngdIn
+          vector(2) += pmiOut
+          vector(3) += ngdOut
+          //}
+          if(ind2) {
+            vector(4) += pmiIn
+            vector(5) += ngdIn
+            vector(6) += pmiOut
+            vector(7) += ngdOut
+            vector(8) += 1
+          }
+        } else {
+          // then the indicators for this case are false, and we will not be adding anything
+          // to the weight vector for this entry.
+        }
+      }
+      for(i <- 0 until vector.size) {
+        // Get the average
+        vector(i) /= otherGoldLinksIn.size
+      }
+      vector
+    }
+
+    /*val PMINGDvals = Seq(
       GLOWfeatures[Int](PMI, refLinksIn, "PMI-in-"),
       GLOWfeatures[Int](NGD, refLinksIn, "NGD-in-"),
       GLOWfeatures[Int](PMI, refLinksOut, "PMI-out-"),
@@ -288,10 +338,14 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
         if (denotationHasParenthetical) {
           feat("MatchesQueryUpToParen=" + queryDescriptorWithProper + "-" + (den.substring(0, den.indexOf("(")).trim.toLowerCase == queryStr.toLowerCase))
         }
-        feat("CompariableWordsLog="+Math.floor(Math.log(denotationSim(denIdx))))
+        feat("CompariableWordsLog="+Math.ceil(Math.log(denotationSim(denIdx))))
         feat("CompariableIsMaxWordSim=" + (denotationSim(denIdx) == denotationSimMax))
         feat("CompariableWordsAboveAvg=" + (denotationSim(denIdx) > denotationSimAvg))
         feat("CompariableWordsReweight="+Math.floor(denotationSim(denIdx) / denotationSimMax * 10))
+        for(i <- 0 until pmingdvals(denIdx).size) {
+          feat("PMINGD-VEC-" + i + "=" + Math.ceil(pmingdvals(denIdx)(i)))
+          feat("PMINGD-log-VEC-" + i + "=" + Math.ceil(Math.log(pmingdvals(denIdx)(i))))
+        }
       } else {
         feat("Impossible");
       }
