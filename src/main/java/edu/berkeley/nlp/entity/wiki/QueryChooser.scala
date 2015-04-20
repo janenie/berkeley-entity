@@ -242,7 +242,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     // which must mean that there is an issue with the wikipedia query extracting system
     val (refLinksIn, refLinksOut) = getDentationLinksSets(denotations, wikiDB)
 
-    val totalTitles = otherGoldLinksIn.reduce(_ | _) | otherGoldLinksOut.reduce(_ | _) | refLinksIn.reduce(_ | _) | refLinksOut.reduce(_ | _)
+    val totalTitles = otherGoldLinksIn.foldLeft(Set[Int]())(_ | _) | otherGoldLinksOut.foldLeft(Set[Int]())(_ | _) | refLinksIn.foldLeft(Set[Int]())(_ | _) | refLinksOut.foldLeft(Set[Int]())(_ | _)
 
     val linkInd = denotations.map(d => {
       val id = wikiDB.linksDB.getPageId(d.replace(" ", "_"))
@@ -284,6 +284,14 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
         vector(i) /= otherGoldLinksIn.size
       }
       vector
+    }
+    val maxpmingd = new Array[Double](9)
+    for(v <- pmingdvals) {
+      for(i <- 0 until 9) {
+        if(v(i) > maxpmingd(i)) {
+          maxpmingd(i) = v(i)
+        }
+      }
     }
 
     /*val PMINGDvals = Seq(
@@ -345,6 +353,9 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
         for(i <- 0 until pmingdvals(denIdx).size) {
           feat("PMINGD-VEC-" + i + "=" + Math.ceil(pmingdvals(denIdx)(i)))
           feat("PMINGD-log-VEC-" + i + "=" + Math.ceil(Math.log(pmingdvals(denIdx)(i))))
+          if(maxpmingd(i) == pmingdvals(denIdx)(i)) {
+            feat("PMINGD-max-VEX-"+i)
+          }
         }
       } else {
         feat("Impossible");
