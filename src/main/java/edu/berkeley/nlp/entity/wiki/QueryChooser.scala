@@ -309,9 +309,21 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     // in the wikification paper they have something that is choosing the references together
     // need to look at pairs of references and
 
-    val denotationSim = denotations.map(t => wikiDB.textDB.compareDocumentC(ment.rawDoc.documentVectorCache, t))
-    val denotationSimMax = denotationSim.max
-    val denotationSimAvg = denotationSim.sum / denotationSim.size
+    val denotationSim = denotations.map(t => {
+      List(
+        wikiDB.textDB.compareDocumentC(ment.rawDoc.documentVectorCache, t),
+        wikiDB.textDB.compareDocumentC(ment.rawDoc.contextVectorCache, t),
+        wikiDB.textDB.compareContextC(ment.rawDoc.documentVectorCache, t),
+        wikiDB.textDB.compareContextC(ment.rawDoc.contextVectorCache, t)
+      )
+    })
+    val denotationSimMax = denotationSim.reduce((a,b) => {
+      (0 until 4).map(i => Math.max(a(i), b(i))).toList
+    })
+    val denotationSimSum: List[Double] = denotationSim.reduce((a,b) => {
+      (0 until 4).map(i => a(i) + b(i)).toList
+    })
+    val denotationSimAvg = (0 until 4).map(i => (denotationSimSum(i) / denotationSim.size))
 
     // TODO: implement the local vector features which compare the text of the pages
     // the context can be the set of items linking into/outof a page? but then that isn't the similarity
@@ -346,15 +358,17 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
         if (denotationHasParenthetical) {
           feat("MatchesQueryUpToParen=" + queryDescriptorWithProper + "-" + (den.substring(0, den.indexOf("(")).trim.toLowerCase == queryStr.toLowerCase))
         }
-        feat("CompariableWordsLog="+Math.ceil(Math.log(denotationSim(denIdx))))
-        feat("CompariableIsMaxWordSim=" + (denotationSim(denIdx) == denotationSimMax))
-        feat("CompariableWordsAboveAvg=" + (denotationSim(denIdx) > denotationSimAvg))
-        feat("CompariableWordsReweight="+Math.floor(denotationSim(denIdx) / denotationSimMax * 10))
+        for(i <- 0 until 4) {
+          feat("CompariableWordsLog-"+i+"=" + Math.ceil(Math.log(denotationSim(denIdx)(i))))
+          feat("CompariableIsMaxWordSim-"+i+"=" + (denotationSim(denIdx)(i) == denotationSimMax(i)))
+          feat("CompariableWordsAboveAvg-"+i+"=" + (denotationSim(denIdx)(i) > denotationSimAvg(i)))
+          feat("CompariableWordsReweight-"+i+"=" + Math.floor(denotationSim(denIdx)(i) / denotationSimMax(i) * 10))
+        }
         for(i <- 0 until pmingdvals(denIdx).size) {
           feat("PMINGD-VEC-" + i + "=" + Math.ceil(pmingdvals(denIdx)(i)))
           feat("PMINGD-log-VEC-" + i + "=" + Math.ceil(Math.log(pmingdvals(denIdx)(i))))
           if(maxpmingd(i) == pmingdvals(denIdx)(i)) {
-            feat("PMINGD-max-VEX-"+i)
+            feat("PMINGD-max-VEC-"+i)
           }
         }
       } else {

@@ -37,6 +37,19 @@ case class JointQueryDenotationExample(val queries: Seq[Query],
   // TODO: this isn't quite right, as if another links is to the same document we will filter it
   // whereas the origional wikification system would have keep it
   def otherLinks = allDocDenotations.filter(!correctDenotations.contains(_))
+
+  def makeDocCache(wikiDB: WikipediaInterface) = {
+    if(document.documentVectorCache == null) {
+      document.documentVectorCache = wikiDB.textDB.makeVector(document.words)
+      document.contextVectorCache = wikiDB.textDB.makeContextVector(document.documentVectorCache)
+    }
+  }
+
+
+  def clearDocCache = {
+    document.documentVectorCache = null
+    document.contextVectorCache = null
+  }
 }
 
 /**
@@ -51,8 +64,10 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
 
   def featurizeUseCache(ex: JointQueryDenotationExample, addToIndexer: Boolean, useGoldKnowledge: Boolean) {
     if (ex.cachedFeatsEachQuery == null) {
-      if(ex.document.documentVectorCache == null)
+      /*if(ex.document.documentVectorCache == null) {
         ex.document.documentVectorCache = wikiDB.textDB.makeVector(ex.document.words)
+        //ex.document.contextVectorCache = wikiDB.textDB.makeContextVector(ex.document.documentVectorCache)
+      }*/
       ex.cachedFeatsEachQuery = queryChooser.featurizeQueries(ex.queries, addToIndexer)
       ex.cachedFeatsEachQueryDenotation = queryChooser.featurizeQueriesAndDenotations_GLOW(ex.queries, ex.allDenotations, addToIndexer, wikiDB, ex.otherLinks)
     }
@@ -307,7 +322,17 @@ object JointQueryDenotationChooser {
     // Extract features
     val featIndexer = new Indexer[String]
     val computer = new JointQueryDenotationChoiceComputer(wikiDB, featIndexer);
+    var lastDocument : Document = null
     for (trainEx <- trainExs) {
+      if(trainEx.document != lastDocument) {
+        if(lastDocument != null) {
+          // clear the cache of these features for memory
+          lastDocument.contextVectorCache = null
+          lastDocument.documentVectorCache = null
+        }
+        lastDocument = trainEx.document
+      }
+      trainEx.makeDocCache(wikiDB)
       computer.featurizeUseCache(trainEx, true, useGoldKnowledge = true);
     }
     Logger.logss(featIndexer.size + " features");
@@ -322,11 +347,17 @@ object JointQueryDenotationChooser {
 
     val testExs = extractExamples(testCorefDocs, goldWikification, wikiDB, filterImpossible = true)//false);
 
+    println("feature weights:")
+    weights.zipWithIndex.sortBy(v => Math.abs(v._1)).foreach(v =>{
+      println(featIndexer.getObject(v._2)+": "+v._1)
+    })
+    println()
+
     var correctItemWasInSet = 0
 
     val results = testExs.map(t => {
       // TODO: need more then one perdicted title
-
+      t.makeDocCache(wikiDB)
       val (picks, denFeats) = chooser.pickDenotations(t.queries, wikiDB, t.otherLinks) // TOOD: remove hack
       if(!isCorrect(t.rawCorrectDenotations, picks(0)._1)) {
         // the pick is not correct, attempt to determine if there would have

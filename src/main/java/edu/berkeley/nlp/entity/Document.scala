@@ -33,4 +33,6 @@ trait Document {
   def getCorrespondingNERChunk (sentIdx : Int, headIdx : Int) : Option[Chunk[String]]
 
   var documentVectorCache: Array[Int] = null
+
+  var contextVectorCache: Array[Int] = null
 }
