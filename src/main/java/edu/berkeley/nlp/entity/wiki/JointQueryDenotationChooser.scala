@@ -315,7 +315,7 @@ object JointQueryDenotationChooser {
     val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface];
     // Make training examples, filtering out those with solutions that are unreachable because
     // they're not good for training
-    val trainExs = extractExamples(trainCorefDocs, goldWikification, wikiDB, filterImpossible = true)
+    var trainExs = extractExamples(trainCorefDocs, goldWikification, wikiDB, filterImpossible = true)
 
     // going to have make this system work on a set of a document
 
@@ -342,9 +342,11 @@ object JointQueryDenotationChooser {
 
     val chooser = new JointQueryDenotationChooser(featIndexer, weights)
 
+    // reclaim mem
+    trainExs = null
+
     // Build the test examples and decode the test set
     // No filtering now because we're doing test
-
     val testExs = extractExamples(testCorefDocs, goldWikification, wikiDB, filterImpossible = true)//false);
 
     println("feature weights:")
