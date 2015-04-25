@@ -30,7 +30,7 @@ class intIter (val arr: IntArray) extends Iterator[Int] {
 
 
 @SerialVersionUID(1L)
-class RawIntArray (private val arr: Array[Int]) extends IntArray {
+class RawIntArray (val arr: Array[Int]) extends IntArray {
   override def apply(i: Int) = arr(i)
   override def update(i: Int, v: Int) = {
     arr(i) = v
@@ -82,6 +82,20 @@ object IntArray {
   val dateTime = {
     val d = new java.util.Date
     d.getTime.toString
+  }
+
+  val empty = makeArray(0)
+
+  implicit def makeArray(arr: Array[Int]): IntArray = {
+    new RawIntArray(arr)
+  }
+
+  implicit def backToPrimitive(arr: IntArray): Array[Int] = {
+    if(arr.isInstanceOf[RawIntArray]) {
+      arr.asInstanceOf[RawIntArray].arr
+    } else {
+      arr.toArray
+    }
   }
 
   def makeArray(length: Int): IntArray = {

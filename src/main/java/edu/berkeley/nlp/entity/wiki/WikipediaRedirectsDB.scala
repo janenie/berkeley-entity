@@ -9,6 +9,8 @@ import edu.berkeley.nlp.entity.wiki._
 
 @SerialVersionUID(1L)
 class WikipediaRedirectsDB(val redirects: HashMap[String,String]) extends Serializable {
+
+  // TODO: make these transient lazy fields, so they are not seralized
   val redirectsWikicase = new HashMap[String,String];
   redirects.foreach(redirect => redirectsWikicase += wikiCase(redirect._1) -> redirect._2);
   val possibleRedirectTargets = redirects.map(_._2).toSet;

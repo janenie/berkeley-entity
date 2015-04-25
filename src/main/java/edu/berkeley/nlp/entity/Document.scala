@@ -32,7 +32,7 @@ trait Document {
 
   def getCorrespondingNERChunk (sentIdx : Int, headIdx : Int) : Option[Chunk[String]]
 
-  var documentVectorCache: Array[Int] = null
+  var documentVectorCache: IntArray = null
 
-  var contextVectorCache: Array[Int] = null
+  var contextVectorCache: IntArray = null
 }

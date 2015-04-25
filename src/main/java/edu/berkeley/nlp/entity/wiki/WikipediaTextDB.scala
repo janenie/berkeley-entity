@@ -1,5 +1,6 @@
 package edu.berkeley.nlp.entity.wiki
 
+import edu.berkeley.nlp.entity.IntArray
 import edu.berkeley.nlp.futile.fig.basic.{IOUtils, Indexer}
 import edu.berkeley.nlp.futile.util.Counter
 
@@ -18,15 +19,15 @@ import scala.collection.mutable
  */
 @SerialVersionUID(1L)
 class WikipediaTextDB (val indexer: Indexer[String],
-                       val words: mutable.HashMap[String, Array[Int]],
-                       val context: mutable.HashMap[String, Array[Int]],
-                       val wordDocCnts: Array[Int]) extends Serializable {
+                       val words: mutable.HashMap[String, IntArray],
+                       val context: mutable.HashMap[String, IntArray],
+                       val wordDocCnts: IntArray) extends Serializable {
 
-  def getDocument(title: String) = words.getOrElse(title, Array[Int]())
+  def getDocument(title: String) = words.getOrElse(title, IntArray.empty)
 
-  def getContext(title: String) = context.getOrElse(title, Array[Int]())
+  def getContext(title: String) = context.getOrElse(title, IntArray.empty)
 
-  def compareVectors(a: Array[Int], b: Array[Int]) = {
+  def compareVectors(a: IntArray, b: IntArray) = {
     var ai = 0
     var bi = 0
     var simcnt = 0
@@ -46,11 +47,11 @@ class WikipediaTextDB (val indexer: Indexer[String],
 
   def compareTitles(atitle: String, btitle: String) = compareVectors(getDocument(atitle), getDocument(btitle))
 
-  def makeVector(document: Seq[Seq[String]]) = {
+  def makeVector(document: Seq[Seq[String]]): IntArray = {
     document.flatMap(_.map(v => indexer.indexOf(v.toLowerCase))).toSet.filter(_ != -1).toArray.sorted
   }
 
-  def makeContextVector(vector: Array[Int]) = {
+  def makeContextVector(vector: IntArray): IntArray = {
     // 300 might be more then the number of words in the document
     // so this might not change anything....
     // maybe shrink this to the top half of words so it is meaningful idk
@@ -60,19 +61,19 @@ class WikipediaTextDB (val indexer: Indexer[String],
     if(vector.size < 300)
       vector
     else
-      vector.sortBy(wordDocCnts(_)).slice(0, 100).sorted
+      vector.toArray.sortBy(wordDocCnts(_)).slice(0, 100).sorted
   }
 
-  def compareDocument(doc: Array[Int], title: String) = compareVectors(doc, getDocument(title))
+  def compareDocument(doc: IntArray, title: String) = compareVectors(doc, getDocument(title))
 
-  def compareDocumentC(doc: Array[Int], title: String) = {
+  def compareDocumentC(doc: IntArray, title: String) = {
     val tdoc = getDocument(title)
     compareVectors(doc, tdoc).asInstanceOf[Double] / (doc.size * tdoc.size)
   }
 
-  def compareContext(doc: Array[Int], title: String) = compareVectors(doc, getContext(title))
+  def compareContext(doc: IntArray, title: String) = compareVectors(doc, getContext(title))
 
-  def compareContextC(doc: Array[Int], title: String) = {
+  def compareContextC(doc: IntArray, title: String) = {
     val tdoc = getContext(title)
     compareVectors(doc, tdoc).asInstanceOf[Double] / (doc.size * tdoc.size)
   }
@@ -87,7 +88,7 @@ object WikipediaTextDB {
     val totalWordCounts = new Counter[Int]
     //var currentWordCounts = new mutable.HashMap[Int,Int]()
     var currentWordCounts = new mutable.HashSet[Int]()
-    val documentResults = new mutable.HashMap[String,Array[Int]]()
+    val documentResults = new mutable.HashMap[String,IntArray]()
     //val documentResultsCount = new mutable.HashMap[String,Array[Int]]()
     var lineIdx = 0
     var numPagesSeen = 0
@@ -157,20 +158,38 @@ object WikipediaTextDB {
     for(k <- documentResults) {
       documentResults(k._1) = k._2.filter(!removeWords.contains(_)).sorted
     }*/
-    val contextWords = new mutable.HashMap[String,Array[Int]]()
+    val contextWords = new mutable.HashMap[String,IntArray]()
     for(k <- documentResults) {
       // get top 300 based off tf-idf score and indicators for the documents
       // the seralization is suppose to notice when two objects are the same
       // so these should just become the same arrays in memory
       if(k._2.size > 300)
-        contextWords(k._1) = k._2.sortBy(w => totalWordCounts.getCount(w)).slice(0, 300).sorted
+        contextWords(k._1) = k._2.toArray.sortBy(w => totalWordCounts.getCount(w)).slice(0, 300).sorted
       else
         contextWords(k._1) = k._2
     }
-    val cntArr = new Array[Int](totalWordCounts.size)
+    var cntArr = IntArray.makeArray(totalWordCounts.size)
     for(i <- 0 until totalWordCounts.size) {
       cntArr(i) = totalWordCounts.getCount(i).asInstanceOf[Int]
     }
+
+    var allArrays = documentResults.map(_._2) ++ contextWords.map(_._2) ++ Seq(cntArr)
+    val intArrays = IntArray.combineArraysMapped(allArrays.toSeq)
+    allArrays = null
+    var at = 0
+    // the order of the iterable should still be the same
+    for(k <- documentResults) {
+      assert(k._2.size == intArrays(at).size)
+      documentResults(k._1) = intArrays(at)
+      at += 1
+    }
+    for(k <- contextWords) {
+      assert(k._2.size == intArrays(at).size)
+      contextWords(k._1) = intArrays(at)
+      at += 1
+    }
+    cntArr = intArrays(at)
+    assert(at + 1 == intArrays.size)
 
 
     new WikipediaTextDB(indexer, documentResults, contextWords, cntArr)
