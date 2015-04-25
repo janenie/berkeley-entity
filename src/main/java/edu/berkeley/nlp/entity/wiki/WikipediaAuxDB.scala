@@ -10,7 +10,7 @@ import edu.berkeley.nlp.PCFGLA.CoarseToFineMaxRuleParser
 import edu.berkeley.nlp.entity.preprocess.Reprocessor
 import edu.berkeley.nlp.entity.preprocess.PreprocessingDriver
 import edu.berkeley.nlp.entity.preprocess.SentenceSplitter
-import edu.berkeley.nlp.entity.DepConstTree
+import edu.berkeley.nlp.entity.{StringUnifier, DepConstTree}
 import scala.collection.mutable.HashSet
 
 @SerialVersionUID(1L)
@@ -31,7 +31,8 @@ class WikipediaAuxDB(val disambiguationSet: HashSet[String]) extends Serializabl
 object WikipediaAuxDB {
   
   def processWikipedia(wikipediaPath: String,
-                       pageTitleSetLc: Set[String]): WikipediaAuxDB = {
+                       pageTitleSetLc: Set[String],
+                       strUnifier: StringUnifier): WikipediaAuxDB = {
     val lines = IOUtils.lineIterator(IOUtils.openInHard(wikipediaPath));
     var currentPageTitle = "";
     var doneWithThisPage = false;
@@ -40,7 +41,7 @@ object WikipediaAuxDB {
     // Extract first line that's not in brackets
     while (lines.hasNext) {
       val line = lines.next;
-      if (line.size > 8 && doneWithThisPage) {
+      if (line.length > 8 && doneWithThisPage) {
         // Do nothing
       } else {
         if (line.contains("<page>")) {
@@ -53,7 +54,7 @@ object WikipediaAuxDB {
         }
         if (!doneWithThisPage && (line.startsWith("{{disambiguation}}") || line.startsWith("{{disambiguation|") ||
                                   line.startsWith("{{disambig}}") || line.startsWith("{{hndis"))) {
-          disambiguationSet += currentPageTitle;
+          disambiguationSet += strUnifier(currentPageTitle);
           doneWithThisPage = true;
         }
       }

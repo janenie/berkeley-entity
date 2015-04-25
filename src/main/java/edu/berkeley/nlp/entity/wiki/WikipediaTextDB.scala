@@ -1,6 +1,6 @@
 package edu.berkeley.nlp.entity.wiki
 
-import edu.berkeley.nlp.entity.IntArray
+import edu.berkeley.nlp.entity.{StringUnifier, IntArray}
 import edu.berkeley.nlp.futile.fig.basic.{IOUtils, Indexer}
 import edu.berkeley.nlp.futile.util.Counter
 
@@ -81,7 +81,7 @@ class WikipediaTextDB (val indexer: Indexer[String],
 }
 
 object WikipediaTextDB {
-  def processWikipedia(wikipediaPath:String, querySet: Set[String]) : WikipediaTextDB = {
+  def processWikipedia(wikipediaPath:String, querySet: Set[String], strUnifier: StringUnifier) : WikipediaTextDB = {
     val lines = IOUtils.lineIterator(IOUtils.openInHard(wikipediaPath));
     var currentPageTitle: String = null
     val indexer = new Indexer[String]
@@ -100,7 +100,7 @@ object WikipediaTextDB {
         println("Line: " + lineIdx + ", processed " + numPagesSeen + " pages");
       }
       lineIdx += 1;
-      if (line.size > 8 && doneWithThisPage) {
+      if (line.length > 8 && doneWithThisPage) {
         // Do nothing
       } else {
         if(line.contains("<page>")) {
@@ -116,7 +116,7 @@ object WikipediaTextDB {
               //val itms = currentWordCounts.map(v => v).toList.sortBy(_._1)
               //documentResults += (currentPageTitle -> itms.map(_._1).toArray)
               //documentResultsCount += (currentPageTitle -> itms.map(_._2).toArray)
-              documentResults += (currentPageTitle -> currentWordCounts.toArray.sorted)
+              documentResults += (strUnifier(currentPageTitle) -> IntArray.makeDiskBacked(currentWordCounts.toArray.sorted))
             }
             //currentWordCounts = new mutable.HashMap[Int,Int]()
             currentWordCounts = new mutable.HashSet[Int]()
@@ -140,7 +140,7 @@ object WikipediaTextDB {
           // TODO: maybe toSet
           val ss = document.toString.split("[^A-Za-z0-9]").toSet
           ss.foreach(w => {
-            val i = indexer.getIndex(w.toLowerCase)
+            val i = indexer.getIndex(strUnifier(w.toLowerCase))
             totalWordCounts.incrementCount(i, 1.0)
             currentWordCounts += i
             //currentWordCounts(i) += 1
@@ -164,16 +164,18 @@ object WikipediaTextDB {
       // the seralization is suppose to notice when two objects are the same
       // so these should just become the same arrays in memory
       if(k._2.size > 300)
-        contextWords(k._1) = k._2.toArray.sortBy(w => totalWordCounts.getCount(w)).slice(0, 300).sorted
+        contextWords(k._1) = IntArray.makeDiskBacked(k._2.toArray.sortBy(w => totalWordCounts.getCount(w)).slice(0, 300).sorted)
       else
         contextWords(k._1) = k._2
+
     }
-    var cntArr = IntArray.makeArray(totalWordCounts.size)
+    val cntArr = IntArray.makeDiskBacked(IntArray.makeArray(totalWordCounts.size))
     for(i <- 0 until totalWordCounts.size) {
       cntArr(i) = totalWordCounts.getCount(i).asInstanceOf[Int]
     }
 
-    var allArrays = documentResults.map(_._2) ++ contextWords.map(_._2) ++ Seq(cntArr)
+    // this works, but just .... ga
+    /*var allArrays = documentResults.map(_._2) ++ contextWords.map(_._2) ++ Seq(cntArr)
     val intArrays = IntArray.combineArraysMapped(allArrays.toSeq)
     allArrays = null
     var at = 0
@@ -190,7 +192,7 @@ object WikipediaTextDB {
     }
     cntArr = intArrays(at)
     assert(at + 1 == intArrays.size)
-
+    */
 
     new WikipediaTextDB(indexer, documentResults, contextWords, cntArr)
   }

@@ -1,11 +1,13 @@
 package edu.berkeley.nlp.entity.wiki
 
+import java.io.File
+
 import scala.Array.canBuildFrom
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 import edu.berkeley.nlp.PCFGLA.CoarseToFineMaxRuleParser
-import edu.berkeley.nlp.entity.{WikiDocReader, ConllDocReader, GUtil}
+import edu.berkeley.nlp.entity._
 import edu.berkeley.nlp.entity.coref.CorefDocAssembler
 import edu.berkeley.nlp.entity.coref.Mention
 import edu.berkeley.nlp.entity.coref.MentionPropertyComputer
@@ -197,34 +199,35 @@ object WikipediaInterface {
 
   val wikiStandoff = "";
   
-  def processWikipedia(wikipediaPath: String, queries: Set[String], parser: CoarseToFineMaxRuleParser, backoffParser: CoarseToFineMaxRuleParser): WikipediaInterface = {
-    val titleGivenSurface = WikipediaTitleGivenSurfaceDB.processWikipedia(wikipediaPath, queries);
-    val redirects = WikipediaRedirectsDB.processWikipedia(wikipediaPath, titleGivenSurface);
+  def processWikipedia(wikipediaPath: String, queries: Set[String], parser: CoarseToFineMaxRuleParser, backoffParser: CoarseToFineMaxRuleParser, strUnifier: StringUnifier): WikipediaInterface = {
+    val titleGivenSurface = WikipediaTitleGivenSurfaceDB.processWikipedia(wikipediaPath, queries, strUnifier);
+    val redirects = WikipediaRedirectsDB.processWikipedia(wikipediaPath, titleGivenSurface, strUnifier);
     val allPageTargetsLc = titleGivenSurface.allPossibleTitlesLowercase.toSet ++ redirects.possibleRedirectTargetsLc;
     val links = if (WikipediaInterface.computeLinkDB) {
-      WikipediaLinkDB.processWikipedia(wikipediaPath, allPageTargetsLc);
+      WikipediaLinkDB.processWikipedia(wikipediaPath, allPageTargetsLc, strUnifier);
     } else {
-      new WikipediaLinkDB(new Indexer[String], new HashMap[Int,Array[Int]], new HashMap[Int,Array[Int]]);
+      new WikipediaLinkDB(new Indexer[String], new HashMap[Int,IntArray], new HashMap[Int,IntArray]);
     }
+    // TODO:? make cat use the string unifier as well
     val categories = WikipediaCategoryDB.processWikipedia(wikipediaPath, allPageTargetsLc, parser, backoffParser);
-    val aux = WikipediaAuxDB.processWikipedia(wikipediaPath, allPageTargetsLc);
-    val texts = WikipediaTextDB.processWikipedia(wikipediaPath, allPageTargetsLc);
+    val aux = WikipediaAuxDB.processWikipedia(wikipediaPath, allPageTargetsLc, strUnifier);
+    val texts = WikipediaTextDB.processWikipedia(wikipediaPath, allPageTargetsLc, strUnifier);
     val wi = new WikipediaInterface(titleGivenSurface, redirects, categories, links, aux, texts);
     wi.printSome();
     wi;
   }
   
-  def processWikipedia(wikipediaPath: String, queries: Set[String], categoryDB: WikipediaCategoryDB): WikipediaInterface = {
-    val titleGivenSurface = WikipediaTitleGivenSurfaceDB.processWikipedia(wikipediaPath, queries);
-    val redirects = WikipediaRedirectsDB.processWikipedia(wikipediaPath, titleGivenSurface);
+  def processWikipedia(wikipediaPath: String, queries: Set[String], categoryDB: WikipediaCategoryDB, strUnifier: StringUnifier): WikipediaInterface = {
+    val titleGivenSurface = WikipediaTitleGivenSurfaceDB.processWikipedia(wikipediaPath, queries, strUnifier);
+    val redirects = WikipediaRedirectsDB.processWikipedia(wikipediaPath, titleGivenSurface, strUnifier);
     val allPageTargetsLc = titleGivenSurface.allPossibleTitlesLowercase.toSet ++ redirects.possibleRedirectTargetsLc;
     val links = if (WikipediaInterface.computeLinkDB) {
-      WikipediaLinkDB.processWikipedia(wikipediaPath, allPageTargetsLc);
+      WikipediaLinkDB.processWikipedia(wikipediaPath, allPageTargetsLc, strUnifier);
     } else {
-      new WikipediaLinkDB(new Indexer[String], new HashMap[Int,Array[Int]], new HashMap[Int,Array[Int]]);
+      new WikipediaLinkDB(new Indexer[String], new HashMap[Int,IntArray], new HashMap[Int,IntArray]);
     }
-    val aux = WikipediaAuxDB.processWikipedia(wikipediaPath, allPageTargetsLc);
-    val texts = WikipediaTextDB.processWikipedia(wikipediaPath, allPageTargetsLc);
+    val aux = WikipediaAuxDB.processWikipedia(wikipediaPath, allPageTargetsLc, strUnifier);
+    val texts = WikipediaTextDB.processWikipedia(wikipediaPath, allPageTargetsLc, strUnifier);
     val wi = new WikipediaInterface(titleGivenSurface, redirects, categoryDB, links, aux, texts);
     wi.printSome();
     wi;
@@ -301,13 +304,18 @@ object WikipediaInterface {
     } else {
       Set[String]()
     }
+
+    IntArray.prefixDir = new File(WikipediaInterface.outputPath).getParent
+
     queries = queries ++ golds
     Logger.logss("Extracted " + queries.size + " queries from " + corefDocs.size + " documents");
+    val strUnifier = new StringUnifier
+    queries = queries.map(strUnifier(_))
     val interface = if (WikipediaInterface.categoryDBInputPath != "") {
       val categoryDB = GUtil.load(WikipediaInterface.categoryDBInputPath).asInstanceOf[WikipediaCategoryDB];
-      processWikipedia(WikipediaInterface.wikipediaDumpPath, queries, categoryDB);
+      processWikipedia(WikipediaInterface.wikipediaDumpPath, queries, categoryDB, strUnifier);
     } else {
-      processWikipedia(WikipediaInterface.wikipediaDumpPath, queries, parser, backoffParser);
+      processWikipedia(WikipediaInterface.wikipediaDumpPath, queries, parser, backoffParser, strUnifier);
     } 
     GUtil.save(interface, WikipediaInterface.outputPath);
     if (WikipediaInterface.categoryDBOutputPath != "") {

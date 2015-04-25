@@ -1,5 +1,7 @@
 package edu.berkeley.nlp.entity.wiki
 
+import java.io.File
+
 import edu.berkeley.nlp.entity.lang.Language
 import edu.berkeley.nlp.futile.LightRunner
 import edu.berkeley.nlp.entity.coref.CorefDocAssembler
@@ -312,6 +314,7 @@ object JointQueryDenotationChooser {
     // Read in gold Wikification labels
     val goldWikification = WikiAnnotReaderWriter.readStandoffAnnotsAsCorpusAnnots(wikiPath)
     // Read in the title given surface database
+    IntArray.prefixDir = new File(wikiDBPath).getParent
     val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface];
     // Make training examples, filtering out those with solutions that are unreachable because
     // they're not good for training

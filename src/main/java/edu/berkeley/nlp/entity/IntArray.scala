@@ -4,28 +4,41 @@ import java.io.{RandomAccessFile, ObjectInputStream, ObjectOutputStream}
 import java.nio.channels.FileChannel
 import java.nio.{IntBuffer, MappedByteBuffer}
 
+import scala.collection.mutable
+
 /**
  * Created by matthewfl
  */
 
-trait IntArray extends Iterable[Int] with Serializable  {
+trait IntArray extends mutable.ArrayLike[Int, Array[Int]] /*with IndexedSeq[Int]*/ with Serializable  {
 
   def apply(i: Int) : Int
   def update(i: Int, v: Int) : Unit
   def length : Int
-  override def size = length
 
-  override def iterator = new intIter(this)
+  // just copied from ofInt class from scala,
+  // I guess don't try using some complicated += method as it will likely break
+  // this makes method such as sorted or sortBy not work directly, so use toArray first
+  override protected[this] def thisCollection: mutable.WrappedArray[Int] = {
+    new mutable.WrappedArray.ofInt(toArray)
+  }
+  override protected[this] def toCollection(repr: Array[Int]): mutable.WrappedArray[Int] = {
+    new mutable.WrappedArray.ofInt(toArray)
+  }
+  override protected[this] def newBuilder : mutable.Builder[Int,Array[Int]] = {
+    println("IntArray get newBuilder")
+    null
+  }
+
+  override def seq = new IntArraySeq(this)
+
+  def toArray = super.toArray
+
 }
 
-class intIter (val arr: IntArray) extends Iterator[Int] {
-  private var at = 0
-  override def hasNext = at < arr.length
-  override def next = {
-    val v = arr(at)
-    at += 1
-    v
-  }
+class IntArraySeq (val arr: IntArray) extends IndexedSeq[Int] {
+  override def apply(i: Int) = arr(i)
+  override def length = arr.length
 }
 
 
@@ -36,6 +49,12 @@ class RawIntArray (val arr: Array[Int]) extends IntArray {
     arr(i) = v
   }
   override def length = arr.length
+
+  // this is an optimization to avoid copying all the elements
+  // however it means that after toArray they are still backed by the same array
+  // whereas in cases of the other subclasses they won't be backed, so the behavior is
+  // inconsistent
+  override def toArray = arr
 }
 
 @SerialVersionUID(1L)
@@ -45,7 +64,8 @@ class SubIntArray (private val arr: IntArray, private val start: Int, val length
 }
 
 // note: do not construct this class directly....
-class BufferIntArray (ib: IntBuffer, private var bufferName: String, val length: Int) extends IntArray {
+@SerialVersionUID(1L)
+class BufferIntArray (ib: IntBuffer, private var bufferName: String, private var lengthv: Int) extends IntArray {
 
   @transient
   private var intBuffer: IntBuffer = ib
@@ -53,14 +73,16 @@ class BufferIntArray (ib: IntBuffer, private var bufferName: String, val length:
   private def writeObject(os: ObjectOutputStream) = {
     os.defaultWriteObject()
     os.writeObject(bufferName)
+    os.writeInt(lengthv)
   }
 
   private def readObject(is: ObjectInputStream) = {
     is.defaultReadObject()
     bufferName = is.readObject().asInstanceOf[String]
+    lengthv = is.readInt()
 
-    val file = new RandomAccessFile(bufferName, "rw")
-    val buffer = file.getChannel.map(FileChannel.MapMode.READ_WRITE, 0, length * 4)
+    val file = new RandomAccessFile(IntArray.prefixDir + "/" + bufferName, "rw")
+    val buffer = file.getChannel.map(FileChannel.MapMode.READ_WRITE, 0, lengthv * 4)
     intBuffer = buffer.asIntBuffer()
   }
 
@@ -71,6 +93,8 @@ class BufferIntArray (ib: IntBuffer, private var bufferName: String, val length:
   override def update(i: Int, v: Int) = {
     intBuffer.put(i, v)
   }
+
+  override def length = lengthv
 
 }
 
@@ -84,6 +108,8 @@ object IntArray {
     d.getTime.toString
   }
 
+  var prefixDir = "."
+
   val empty = makeArray(0)
 
   implicit def makeArray(arr: Array[Int]): IntArray = {
@@ -91,10 +117,9 @@ object IntArray {
   }
 
   implicit def backToPrimitive(arr: IntArray): Array[Int] = {
-    if(arr.isInstanceOf[RawIntArray]) {
-      arr.asInstanceOf[RawIntArray].arr
-    } else {
-      arr.toArray
+    arr match {
+      case a: RawIntArray => a.arr
+      case a => a.toArray
     }
   }
 
@@ -116,15 +141,20 @@ object IntArray {
     }
   }
 
+  // construct one or more single files that back a sequence of arrays
   def combineArraysMapped(arrs: Seq[IntArray]): Seq[IntArray] = {
-    val totalLength = arrs.map(_.length).sum
-    val bufferName = s"IntArray-${dateTime}-${java.util.UUID.randomUUID().toString.replace("-","")}"
-    val file = new RandomAccessFile(bufferName, "rw")
-    val buffer = file.getChannel.map(FileChannel.MapMode.READ_WRITE, 0, totalLength * 4)
-    val intBuffer = buffer.asIntBuffer()
-    val backingArr = new BufferIntArray(intBuffer, bufferName, totalLength)
+    val totalLength: Long = arrs.map(_.length.asInstanceOf[Long]).sum
+    var backingArr : BufferIntArray = null //makeBackingArr(totalLength)
     var at = 0
+    var consumed: Long = 0
     val ret = for(a <- arrs) yield {
+      // we are going to limit the size of the file to 1gb to avoid potential scaling issues
+      if(backingArr == null || (at + a.length) > backingArr.length) {
+        val remaining = totalLength - consumed
+        backingArr = makeBackingArr(Math.max(a.length, Math.min(remaining, 1024*1024*256).asInstanceOf[Int]))
+        at = 0
+      }
+      consumed += a.length
       val start = at
       for(v <- a) {
         backingArr(at) = v
@@ -132,8 +162,35 @@ object IntArray {
       }
       new SubIntArray(backingArr, start, a.length)
     }
-    buffer.force()
+
     ret
+  }
+
+  // add the current array to the current running buffer for the arrays
+  // a buffer will be up to 2gb in size
+  def makeDiskBacked(arr: IntArray): IntArray = {
+    if(sharedBacking == null || (sharedConsumed + arr.length) > sharedBacking.length) {
+      sharedBacking = makeBackingArr(Math.max(arr.length, 1024*1024*500))
+      sharedConsumed = 0
+    }
+    val start = sharedConsumed
+    for(v <- arr) {
+      sharedBacking(sharedConsumed) = v
+      sharedConsumed += 1
+    }
+    new SubIntArray(sharedBacking, start, arr.length)
+  }
+
+
+  private var sharedBacking: BufferIntArray = null
+  private var sharedConsumed: Int = 0
+
+  private def makeBackingArr(length: Int) = {
+    val bufferName = s"IntArray-${dateTime}-${java.util.UUID.randomUUID().toString.replace("-","")}"
+    val file = new RandomAccessFile(prefixDir + "/" + bufferName, "rw")
+    val buffer = file.getChannel.map(FileChannel.MapMode.READ_WRITE, 0, length.asInstanceOf[Long] * 4)
+    val intBuffer = buffer.asIntBuffer()
+    new BufferIntArray(intBuffer, bufferName, length)
   }
 
 }

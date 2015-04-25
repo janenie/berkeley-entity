@@ -1,5 +1,7 @@
 package edu.berkeley.nlp.entity.wiki
 
+import edu.berkeley.nlp.entity.StringUnifier
+
 import scala.collection.mutable.HashSet
 import scala.collection.JavaConverters._
 import edu.berkeley.nlp.futile.util.CounterMap
@@ -93,7 +95,7 @@ object WikipediaTitleGivenSurfaceDB {
 
   // this is using the set of generated queries to determine which are the best items to extract
   // / limit the size of the extracted wiki data
-  def processWikipedia(wikipediaPath: String, querySet: Set[String]): WikipediaTitleGivenSurfaceDB = {
+  def processWikipedia(wikipediaPath: String, querySet: Set[String], strUnifier: StringUnifier): WikipediaTitleGivenSurfaceDB = {
     val lowercase = false;
     val surfaceToTitle = new CounterMap[String,String];
     val lines = IOUtils.lineIterator(IOUtils.openInHard(wikipediaPath));
@@ -117,13 +119,14 @@ object WikipediaTitleGivenSurfaceDB {
           if (querySet.contains(query)) {
             val title = maybeLc(line.substring(startIdx + 2, pipeIdx), lowercase);
             if (isGoodTitle(title)) {
-              surfaceToTitle.incrementCount(query, title, 1.0);
+              surfaceToTitle.incrementCount(query, strUnifier(title), 1.0);
             }
           }
         } else if (endIdx >= startIdx + 2) {
           val title = maybeLc(line.substring(startIdx + 2, endIdx), lowercase);
           if (querySet.contains(title) && isGoodTitle(title)) {
-            surfaceToTitle.incrementCount(title, title, 1.0);
+            val ut = strUnifier(title)
+            surfaceToTitle.incrementCount(ut, ut, 1.0);
           }
         }
         startIdx = line.indexOf("[[", startIdx + 2);

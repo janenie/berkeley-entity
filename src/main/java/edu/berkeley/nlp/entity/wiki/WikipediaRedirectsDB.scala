@@ -1,5 +1,6 @@
 package edu.berkeley.nlp.entity.wiki
 
+import edu.berkeley.nlp.entity.StringUnifier
 import edu.berkeley.nlp.futile.fig.basic.IOUtils
 import scala.collection.mutable.HashMap
 import edu.berkeley.nlp.futile.util.Counter
@@ -10,11 +11,21 @@ import edu.berkeley.nlp.entity.wiki._
 @SerialVersionUID(1L)
 class WikipediaRedirectsDB(val redirects: HashMap[String,String]) extends Serializable {
 
-  // TODO: make these transient lazy fields, so they are not seralized
-  val redirectsWikicase = new HashMap[String,String];
-  redirects.foreach(redirect => redirectsWikicase += wikiCase(redirect._1) -> redirect._2);
-  val possibleRedirectTargets = redirects.map(_._2).toSet;
-  val possibleRedirectTargetsLc = redirects.map(_._2.toLowerCase).toSet;
+  @transient
+  lazy val redirectsWikicase = {
+    val rr = new HashMap[String,String];
+    redirects.foreach(redirect => rr += wikiCase(redirect._1) -> redirect._2)
+    rr
+  }
+
+  @transient
+  lazy val possibleRedirectTargets = {
+    redirects.map(_._2).toSet
+  }
+  @transient
+  lazy val possibleRedirectTargetsLc = {
+    redirects.map(_._2.toLowerCase).toSet
+  }
   
   def followRedirect(title: String) = {
 //    val print = title == "student_association";
@@ -87,7 +98,7 @@ object WikipediaRedirectsDB {
     redirects;
   }
   
-  def processWikipedia(wikipediaPath: String, titleGivenSurfaceDB: WikipediaTitleGivenSurfaceDB): WikipediaRedirectsDB = {
+  def processWikipedia(wikipediaPath: String, titleGivenSurfaceDB: WikipediaTitleGivenSurfaceDB, strUnifier: StringUnifier): WikipediaRedirectsDB = {
     val lowercase = false
     val lines = IOUtils.lineIterator(IOUtils.openInHard(wikipediaPath));
     var currentPageTitle = "";
@@ -120,7 +131,7 @@ object WikipediaRedirectsDB {
           val endIdx = line.indexOf("\"", startIdx);
           val redirectTitle = maybeLc(line.substring(startIdx, endIdx), lowercase);
           if (titleGivenSurfaceDB.allPossibleTitlesLowercase.contains(currentPageTitle.toLowerCase)) {
-            redirects.put(currentPageTitle, redirectTitle);
+            redirects.put(strUnifier(currentPageTitle), strUnifier(redirectTitle));
           }
           doneWithThisPage = true;
         }

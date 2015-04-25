@@ -7,17 +7,16 @@ import scala.collection.mutable.ArrayBuffer
 import edu.berkeley.nlp.futile.fig.basic.IOUtils
 import scala.collection.mutable.HashSet
 import edu.berkeley.nlp.futile.util.Logger
-import edu.berkeley.nlp.entity.GUtil
+import edu.berkeley.nlp.entity.{IntArray, StringUnifier, GUtil, ConllDocReader}
 import edu.berkeley.nlp.entity.coref.MentionPropertyComputer
 import edu.berkeley.nlp.entity.coref.CorefDocAssembler
-import edu.berkeley.nlp.entity.ConllDocReader
 import edu.berkeley.nlp.entity.lang.Language
 import edu.berkeley.nlp.entity.wiki._
 
 @SerialVersionUID(9084163557546777842L)
 class WikipediaLinkDB(private val pageNameIndex: Indexer[String],
-                      private val inLinksMap: HashMap[Int,Array[Int]],
-                      private val outLinksMap: HashMap[Int,Array[Int]]) extends Serializable {
+                      private val inLinksMap: HashMap[Int,IntArray],
+                      private val outLinksMap: HashMap[Int,IntArray]) extends Serializable {
   @transient
   private var outLinksSetCache : mutable.HashMap[String,Set[Int]] = null
 
@@ -29,7 +28,7 @@ class WikipediaLinkDB(private val pageNameIndex: Indexer[String],
     if (outLinksMap.contains(k)) {
       outLinksMap(k);
     } else {
-      Array[Int]();
+      IntArray.empty
     }
   }
 
@@ -38,7 +37,7 @@ class WikipediaLinkDB(private val pageNameIndex: Indexer[String],
     if(inLinksMap.contains(k)) {
       inLinksMap(k)
     } else {
-      Array[Int]()
+      IntArray.empty
     }
   }
 
@@ -54,7 +53,7 @@ class WikipediaLinkDB(private val pageNameIndex: Indexer[String],
         if (inLinksSetCache.size > 1000) {
           inLinksSetCache = new mutable.HashMap[String,Set[Int]]()
         }
-        val s = inLinksMap.getOrElse(k, Array[Int]()).toSet
+        val s = inLinksMap.getOrElse(k, IntArray.empty).toSet
         inLinksSetCache.put(title, s)
         s
       } else {
@@ -76,7 +75,7 @@ class WikipediaLinkDB(private val pageNameIndex: Indexer[String],
           // dropping one item was taking too long
           outLinksSetCache = new mutable.HashMap[String,Set[Int]]()
         }
-        val s = outLinksMap.getOrElse(k, Array[Int]()).toSet
+        val s = outLinksMap.getOrElse(k, IntArray.empty).toSet
         outLinksSetCache.put(title, s)
         s
       } else {
@@ -109,7 +108,7 @@ class WikipediaLinkDB(private val pageNameIndex: Indexer[String],
 
 object WikipediaLinkDB {
   
-  def processWikipedia(wikipediaPath: String, pageTitleSetLc: Set[String]): WikipediaLinkDB = {
+  def processWikipedia(wikipediaPath: String, pageTitleSetLc: Set[String], strUnifier: StringUnifier): WikipediaLinkDB = {
     val pageNamesIndex = new Indexer[String];
     val inLinksMap = new HashMap[Int,HashSet[Int]];
     val outLinksMap = new HashMap[Int,HashSet[Int]];
@@ -148,7 +147,7 @@ object WikipediaLinkDB {
           }
         } else if (line.contains("<redirect title")) {
           val linkDest = line.substring(line.indexOf("title=\"") + 7, line.indexOf("\" />"))
-          val idx = pageNamesIndex.getIndex(linkDest)
+          val idx = pageNamesIndex.getIndex(strUnifier(linkDest))
           val hs = new HashSet[Int]
           hs.add(idx)
           outLinksMap.put(currentPageTitleind, hs)
@@ -166,7 +165,7 @@ object WikipediaLinkDB {
             ""
           }
           if (linkDest != "") {
-            val idx = pageNamesIndex.getIndex(linkDest);
+            val idx = pageNamesIndex.getIndex(strUnifier(linkDest));
             if (!outLinksMap.contains(currentPageTitleind)) {
               outLinksMap.put(currentPageTitleind, new HashSet[Int]);
             }
@@ -184,8 +183,8 @@ object WikipediaLinkDB {
         inLinksMap(b) += a._1
       })
     })
-    val inLinksMapArrs = inLinksMap.map(entry => entry._1 -> entry._2.toArray); // TODO: WTF: inlinksmap is never written to
-    val outLinksMapArrs = outLinksMap.map(entry => entry._1 -> entry._2.toArray);
+    val inLinksMapArrs = inLinksMap.map(entry => entry._1 -> IntArray.makeDiskBacked(entry._2.toArray));
+    val outLinksMapArrs = outLinksMap.map(entry => entry._1 -> IntArray.makeDiskBacked(entry._2.toArray));
     val sizes = Array.tabulate(10)(i => 0);
     for (key <- outLinksMapArrs.keySet) {
       val size = outLinksMapArrs(key).size;
@@ -196,6 +195,11 @@ object WikipediaLinkDB {
     Logger.logss("SIZES: " + sizes.toSeq);
     new WikipediaLinkDB(pageNamesIndex, inLinksMapArrs, outLinksMapArrs);
   }
+
+
+
+
+
   
   def main(args: Array[String]) {
     val wi = GUtil.load("data/wikipedia/wiki-model-ace-links.ser.gz").asInstanceOf[WikipediaInterface];
