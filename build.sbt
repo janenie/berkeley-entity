@@ -11,3 +11,5 @@ assemblySettings
 mainClass in assembly := Some("edu.berkeley.nlp.entity.Driver")
 
 unmanagedResourceDirectories in Compile += { baseDirectory.value / "resources/" }
+
+scalacOptions ++= Seq("-optimise")//, "-Yinline-warnings", "-feature", "-deprecation")

@@ -68,14 +68,14 @@ class WikipediaTextDB (val indexer: Indexer[String],
 
   def compareDocumentC(doc: IntArray, title: String) = {
     val tdoc = getDocument(title)
-    compareVectors(doc, tdoc).asInstanceOf[Double] / (doc.size * tdoc.size)
+    compareVectors(doc, tdoc).asInstanceOf[Double] / (doc.size * tdoc.size + 1)
   }
 
   def compareContext(doc: IntArray, title: String) = compareVectors(doc, getContext(title))
 
   def compareContextC(doc: IntArray, title: String) = {
     val tdoc = getContext(title)
-    compareVectors(doc, tdoc).asInstanceOf[Double] / (doc.size * tdoc.size)
+    compareVectors(doc, tdoc).asInstanceOf[Double] / (doc.size * tdoc.size + 1)
   }
 
 }
@@ -164,7 +164,9 @@ object WikipediaTextDB {
       // the seralization is suppose to notice when two objects are the same
       // so these should just become the same arrays in memory
       if(k._2.size > 300)
-        contextWords(k._1) = IntArray.makeDiskBacked(k._2.toArray.sortBy(w => totalWordCounts.getCount(w)).slice(0, 300).sorted)
+        contextWords(k._1) = IntArray.makeDiskBacked(k._2.toArray.sortBy(w => {
+          totalWordCounts.getCount(w)
+        }).slice(0, 300).sorted)
       else
         contextWords(k._1) = k._2
 

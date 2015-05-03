@@ -84,6 +84,12 @@ class BufferIntArray (ib: IntBuffer, private var bufferName: String, private var
     val file = new RandomAccessFile(IntArray.prefixDir + "/" + bufferName, "rw")
     val buffer = file.getChannel.map(FileChannel.MapMode.READ_WRITE, 0, lengthv * 4)
     intBuffer = buffer.asIntBuffer()
+
+    // stupid hack to make sure that we have read all the values at least once
+    // so that when we randomly access them they should all already be cached
+    var ss = 0
+    for(i <- 0 until lengthv)
+      ss += intBuffer.get(i)
   }
 
   override def apply(i: Int) = {

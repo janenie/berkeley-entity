@@ -175,7 +175,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
   def PMI[T](a: Set[T], b: Set[T], wsize: Int) : Double = {
     // TODO: ? the use of wsize here does not make since
     // must be misunderstanding something
-    (intersectSize(a,b) * wsize).asInstanceOf[Float] / (a.size * b.size)
+    (intersectSize(a,b) * wsize).asInstanceOf[Double] / (a.size * b.size + 1)
   }
 /*
   def GLOWfeatures[T](fn: (Set[T], Set[T], Int) => Double, refs: Seq[Set[T]], prefix: String): Seq[Array[String]] = {
@@ -333,6 +333,16 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     Array.tabulate(queries.size, denotations.size)((queryIdx, denIdx) => {
       val feats = new ArrayBuffer[Int];
       def feat(str: String) = addFeat(str, feats, addToIndexer);
+      def featUpToVal(str: String, vv: Int) = {
+        // there is some infty in the value, so dividing by zero or something...
+        if(vv == Integer.MAX_VALUE) {
+          feat(str + "max-int-val")
+        } else {
+          for (i <- -1 until vv) {
+            feat(str + vv)
+          }
+        }
+      }
       /*for(p <- PMINGDvals)
         for(f <- p(denIdx))
           feat(f)
@@ -359,14 +369,14 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
           feat("MatchesQueryUpToParen=" + queryDescriptorWithProper + "-" + (den.substring(0, den.indexOf("(")).trim.toLowerCase == queryStr.toLowerCase))
         }
         for(i <- 0 until 4) {
-          feat("CompariableWordsLog-"+i+"=" + Math.ceil(Math.log(denotationSim(denIdx)(i))))
+          featUpToVal("CompariableWordsLog-"+i+"=", Math.ceil(Math.log(denotationSim(denIdx)(i) / denotationSimMax(i) * 10000)).asInstanceOf[Int])
           feat("CompariableIsMaxWordSim-"+i+"=" + (denotationSim(denIdx)(i) == denotationSimMax(i)))
           feat("CompariableWordsAboveAvg-"+i+"=" + (denotationSim(denIdx)(i) > denotationSimAvg(i)))
-          feat("CompariableWordsReweight-"+i+"=" + Math.floor(denotationSim(denIdx)(i) / denotationSimMax(i) * 10))
+          //featUpToVal("CompariableWordsReweight-"+i+"=", Math.floor(denotationSim(denIdx)(i) / denotationSimMax(i) * 10).asInstanceOf[Int])
         }
         for(i <- 0 until pmingdvals(denIdx).size) {
-          feat("PMINGD-VEC-" + i + "=" + Math.ceil(pmingdvals(denIdx)(i)))
-          feat("PMINGD-log-VEC-" + i + "=" + Math.ceil(Math.log(pmingdvals(denIdx)(i))))
+          featUpToVal("PMINGD-VEC-" + i + "=", Math.ceil(Math.log(pmingdvals(denIdx)(i) / maxpmingd(i) * 10000)).asInstanceOf[Int])
+          //featUpToVal("PMINGD-log-VEC-" + i + "=", Math.ceil(Math.log(pmingdvals(denIdx)(i))).asInstanceOf[Int])
           if(maxpmingd(i) == pmingdvals(denIdx)(i)) {
             feat("PMINGD-max-VEC-"+i)
           }
