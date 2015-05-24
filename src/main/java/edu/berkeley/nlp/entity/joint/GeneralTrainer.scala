@@ -118,7 +118,7 @@ class GeneralTrainer[T] {
       // N.B. We negate the gradient here because the Adagrad formulas are all for minimizing
       // and we're trying to maximize, so think of it as minimizing the negative of the objective
       // which has the opposite gradient
-      // Equation (25) in http://www.cs.berkeley.edu/~jduchi/projects/DuchiHaSi10.pdf
+      // Equation (25) in htop
       // eta is the step size, lambda is the regularization
       val gti = -reusableGradientArray(i) * batchSizeMultiplier;
       // Update diagGt

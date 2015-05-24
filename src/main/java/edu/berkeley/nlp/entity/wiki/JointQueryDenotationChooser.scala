@@ -119,7 +119,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
     // in advance anyway to know how long the weight vector should be
 
     // todo:mfl: seems like there might be something wrong here.......
-    val allFeats = featurizeUseCache(ex, false, useGoldKnowledge = true) // TODO: change to false
+    featurizeUseCache(ex, false, useGoldKnowledge = true) // TODO: change to false
     val scores = getUnnormalizedJointScores(ex, weights)
     val logNormalizer = SloppyMath.logAdd(scores.map(SloppyMath.logAdd(_)))
     var goldLogNormalizer = Float.NegativeInfinity

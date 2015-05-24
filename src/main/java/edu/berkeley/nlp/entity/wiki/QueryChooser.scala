@@ -349,6 +349,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
       */
       val query = queries(queryIdx);
       val den = denotations(denIdx);
+      feat("OnEverything");
       if (den == NilToken) {
         feat("NilAndQueryNonempty=" + queryNonemptyList(queryIdx));
       } else if (queryOutcomes(queryIdx).containsKey(den)) {
