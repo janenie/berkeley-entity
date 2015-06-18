@@ -1,12 +1,8 @@
 package edu.berkeley.nlp.entity.joint
-import scala.Array.canBuildFrom
-import scala.collection.JavaConverters.asScalaBufferConverter
-import scala.collection.mutable.HashSet
-import edu.berkeley.nlp.futile.math.CachingDifferentiableFunction
-import edu.berkeley.nlp.futile.math.LBFGSMinimizer
-import edu.berkeley.nlp.futile.util.Logger
-import edu.berkeley.nlp.futile.fig.basic.SysInfoUtils
 import java.util.Arrays
+
+import edu.berkeley.nlp.futile.fig.basic.SysInfoUtils
+import edu.berkeley.nlp.futile.util.Logger
 
 trait LikelihoodAndGradientComputer[T] {
   def addUnregularizedStochasticGradient(ex: T, weights: Array[Float], gradient: Array[Float]);
@@ -17,7 +13,8 @@ class GeneralTrainer[T] {
   
   var inferenceNanos = 0L;
   var adagradNanos = 0L;
-  
+  var checkGradient = true
+
   def train(trainExs: Seq[T],
             computer: LikelihoodAndGradientComputer[T],
             numFeats: Int,
@@ -105,15 +102,30 @@ class GeneralTrainer[T] {
                          lambda: Float) {
     Arrays.fill(reusableGradientArray, 0.0F);
     var nanoTime = System.nanoTime();
+    var i = 0
     for (ex <- exs) {
       computer.addUnregularizedStochasticGradient(ex, weights, reusableGradientArray);
     }
+    /*if(checkGradient) {
+      val currLikelihood = computeLikelihood(exs, computer, weights)
+      i = 0
+      while(i < reusableGradientArray.length) {
+        weights(i) += .01f
+        val nlikely = computeLikelihood(exs, computer, weights)
+        weights(i) -= .01f
+        val approxG = (nlikely - currLikelihood) / .01
+        if(Math.abs(approxG - reusableGradientArray(i)) > .01) {
+          println(s"difference in graident $i with ${reusableGradientArray(i)} - $approxG")
+        }
+        i += 1
+      }
+    }*/
     inferenceNanos += (System.nanoTime() - nanoTime);
     nanoTime = System.nanoTime();
     // Precompute this so dividing by batch size is a multiply and not a divide
     val batchSizeMultiplier = 1.0F/exs.size;
-    var i = 0;
-    while (i < reusableGradientArray.size) {
+    i = 0
+    while (i < reusableGradientArray.length) {
       val xti = weights(i);
       // N.B. We negate the gradient here because the Adagrad formulas are all for minimizing
       // and we're trying to maximize, so think of it as minimizing the negative of the objective
@@ -132,6 +144,6 @@ class GeneralTrainer[T] {
     }
     adagradNanos += (System.nanoTime() - nanoTime);
   }
-  
+
   
 }

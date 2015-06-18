@@ -27,6 +27,7 @@ trait IntArray extends mutable.ArrayLike[Int, Array[Int]] /*with IndexedSeq[Int]
   }
   override protected[this] def newBuilder : mutable.Builder[Int,Array[Int]] = {
     println("IntArray get newBuilder")
+    throw new NotImplementedError()
     null
   }
 
