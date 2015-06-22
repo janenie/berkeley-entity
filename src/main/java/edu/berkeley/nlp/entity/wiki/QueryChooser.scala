@@ -1,24 +1,16 @@
 package edu.berkeley.nlp.entity.wiki
 
-import edu.berkeley.nlp.entity.joint.LikelihoodAndGradientComputer
-import edu.berkeley.nlp.entity.joint.GeneralTrainer
-import edu.berkeley.nlp.futile.LightRunner
-import edu.berkeley.nlp.futile.math.SloppyMath
-import scala.collection.mutable.ArrayBuffer
-import edu.berkeley.nlp.futile.fig.basic.Indexer
-import edu.berkeley.nlp.futile.util.Counter
-import edu.berkeley.nlp.futile.util.Logger
-import scala.collection.mutable.HashMap
-import scala.collection.mutable.HashSet
-import scala.collection.JavaConverters._
-import edu.berkeley.nlp.entity.GUtil
-import edu.berkeley.nlp.entity.coref.CorefDoc
+import edu.berkeley.nlp.entity.{ConllDocReader, GUtil}
+import edu.berkeley.nlp.entity.coref.{CorefDoc, CorefDocAssembler, MentionPropertyComputer}
+import edu.berkeley.nlp.entity.joint.{GeneralTrainer, LikelihoodAndGradientComputer}
 import edu.berkeley.nlp.entity.lang.Language
-import edu.berkeley.nlp.entity.ConllDocReader
-import edu.berkeley.nlp.entity.coref.CorefDocAssembler
-import edu.berkeley.nlp.entity.coref.MentionPropertyComputer
+import edu.berkeley.nlp.futile.LightRunner
+import edu.berkeley.nlp.futile.fig.basic.Indexer
+import edu.berkeley.nlp.futile.math.SloppyMath
+import edu.berkeley.nlp.futile.util.{Counter, Logger}
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 case class QueryChoiceExample(val queries: Seq[Query],
                               val denotations: Seq[String],

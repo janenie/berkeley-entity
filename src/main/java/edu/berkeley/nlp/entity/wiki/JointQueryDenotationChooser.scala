@@ -111,7 +111,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
   }
 
   /**
-   * Computes the gradient on the given example at the point specified by the given weight vector and adds it to the
+   * Computes the gradient on the given example at the point specified by the given weight vector and adds it to thea
    * gradient array.
    */
   def addUnregularizedStochasticGradient(ex: JointQueryDenotationExample, weights: Array[Float], gradient: Array[Float]) {

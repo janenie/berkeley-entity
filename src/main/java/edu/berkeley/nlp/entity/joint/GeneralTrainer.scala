@@ -1,12 +1,8 @@
 package edu.berkeley.nlp.entity.joint
-import scala.Array.canBuildFrom
-import scala.collection.JavaConverters.asScalaBufferConverter
-import scala.collection.mutable.HashSet
-import edu.berkeley.nlp.futile.math.CachingDifferentiableFunction
-import edu.berkeley.nlp.futile.math.LBFGSMinimizer
-import edu.berkeley.nlp.futile.util.Logger
-import edu.berkeley.nlp.futile.fig.basic.SysInfoUtils
 import java.util.Arrays
+
+import edu.berkeley.nlp.futile.fig.basic.SysInfoUtils
+import edu.berkeley.nlp.futile.util.Logger
 
 trait LikelihoodAndGradientComputer[T] {
   def addUnregularizedStochasticGradient(ex: T, weights: Array[Float], gradient: Array[Float]);

@@ -1,8 +1,8 @@
 package edu.berkeley.nlp.entity
 
-import java.io.{RandomAccessFile, ObjectInputStream, ObjectOutputStream}
+import java.io.{ObjectInputStream, ObjectOutputStream, RandomAccessFile}
+import java.nio.IntBuffer
 import java.nio.channels.FileChannel
-import java.nio.{IntBuffer, MappedByteBuffer}
 
 import scala.collection.mutable
 
@@ -10,7 +10,7 @@ import scala.collection.mutable
  * Created by matthewfl
  */
 
-trait IntArray extends mutable.ArrayLike[Int, Array[Int]] /*with IndexedSeq[Int]*/ with Serializable  {
+sealed trait IntArray extends mutable.ArrayLike[Int, Array[Int]] /*with IndexedSeq[Int]*/ with Serializable  {
 
   def apply(i: Int) : Int
   def update(i: Int, v: Int) : Unit
