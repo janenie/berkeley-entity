@@ -31,7 +31,7 @@ case class JointQueryDenotationExample(val queries: Seq[Query],
 
   // Feature caches since feature computation is expensive if redone every time
   var cachedFeatsEachQuery: Array[Array[Int]] = null;
-  var cachedFeatsEachQueryDenotation: Array[Array[Array[Int]]] = null;
+  var cachedFeatsEachQueryDenotation: Array[Array[FeatureRep]] = null;
 
   def document = queries.head.originalMent.rawDoc
 
@@ -85,7 +85,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
     // and sum the values of the features
     val rawQueryScores = ex.cachedFeatsEachQuery.map(feats => GUtil.scoreIndexedFeats(feats, weights));
     // these are the weights from each query wrt the various word choices
-    val queryDenotationMatrix = ex.cachedFeatsEachQueryDenotation.map(_.map(feats => GUtil.scoreIndexedFeats(feats, weights)));
+    val queryDenotationMatrix = ex.cachedFeatsEachQueryDenotation.map(_.map(feats => feats.dotWeights(weights)));
     val scores = Array.tabulate(ex.queries.size, ex.allDenotations.size)((i, j) => Float.NegativeInfinity)
     for (queryIdx <- 0 until ex.queries.size; denotationIdx <- 0 until ex.allDenotations.size) {
       // These are indicator weights, so by summing them we can compute the resulting value of choosing a given word
@@ -133,7 +133,8 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
         val isCorrect = ex.correctDenotationIndices.contains(j)
         val goldCount = if (isCorrect) (Math.exp(scores(i)(j) - goldLogNormalizer)).toFloat else 0F
         val predCount = Math.exp(scores(i)(j) - logNormalizer).toFloat
-        GUtil.addToGradient(ex.cachedFeatsEachQueryDenotation(i)(j), goldCount - predCount, gradient);
+        ex.cachedFeatsEachQueryDenotation(i)(j).addToGradient(goldCount - predCount, gradient)
+        //GUtil.addToGradient(ex.cachedFeatsEachQueryDenotation(i)(j), goldCount - predCount, gradient);
         GUtil.addToGradient(ex.cachedFeatsEachQuery(i), goldCount - predCount, gradient);
       }
     }
@@ -200,7 +201,10 @@ class JointQueryDenotationChooser(val featureIndexer: Indexer[String],
       println("\t\t"+i+": "+queries(i))
       println("\t\t"+ex.cachedFeatsEachQuery(i).map(featureIndexer.getObject(_)).mkString(" "))
       for(j <- 0 until ex.allDenotations.length) {
-        println("\t\t\t"+j+": "+ex.allDenotations(j)+": "+ex.cachedFeatsEachQueryDenotation(i)(j).map(featureIndexer.getObject(_)).mkString(" "))
+        println("\t\t\t"+j+": "+ex.allDenotations(j)+": "+
+          ex.cachedFeatsEachQueryDenotation(i)(j).intFeatures.map(i => featureIndexer.getObject(i - FeatureRep.numWeightedFeatures)).mkString(" ")
+        // TODO: print the weights for the weighted features
+        )
       }
     }
     println()
@@ -343,7 +347,7 @@ object JointQueryDenotationChooser {
     Logger.logss(featIndexer.size + " features");
     // Train
     val gt = new GeneralTrainer[JointQueryDenotationExample]();
-    val weights = gt.trainAdagrad(trainExs, computer, featIndexer.size, 1.0F, lambda, batchSize, numItrs);
+    val weights = gt.trainAdagrad(trainExs, computer, featIndexer.size + FeatureRep.numWeightedFeatures, 1.0F, lambda, batchSize, numItrs);
 
     val chooser = new JointQueryDenotationChooser(featIndexer, weights)
 

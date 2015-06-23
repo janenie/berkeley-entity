@@ -1,9 +1,11 @@
 package edu.berkeley.nlp.entity.wikivec
 
+/*
 import org.deeplearning4j.models.embeddings.inmemory.InMemoryLookupTable
 import org.deeplearning4j.models.word2vec.Word2Vec
 import org.deeplearning4j.models.word2vec.wordstore.inmemory.InMemoryLookupCache
 import org.deeplearning4j.text.tokenization.tokenizerfactory.UimaTokenizerFactory
+
 
 /**
  * Created by matthewfl
@@ -83,3 +85,5 @@ object WikipediaVector {
   }
 
 }
+
+ */

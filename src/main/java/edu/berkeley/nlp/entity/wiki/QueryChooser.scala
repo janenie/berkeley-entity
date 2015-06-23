@@ -29,6 +29,24 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     }
     if (idx != -1) feats += idx;
   }
+
+  def addFeat(feat: String, feats: FeatureBuilder, addToIndexer: Boolean): Unit = {
+    val idx = if (addToIndexer) {
+      featureIndexer.getIndex(feat);
+    } else {
+      featureIndexer.indexOf(feat);
+    }
+    if (idx != -1) feats += idx;
+  }
+
+  def addFeat(feat: String, v: Float, feats: FeatureBuilder, addToIndexer: Boolean): Unit = {
+    val idx = if (addToIndexer) {
+      featureIndexer.getIndex(feat);
+    } else {
+      featureIndexer.indexOf(feat);
+    }
+    if(idx != -1) feats.addWeighted(idx, v)
+  }
   
   def featurizeUseCache(ex: QueryChoiceExample, addToIndexer: Boolean) = {
     if (ex.cachedFeatsEachQuery == null) {
@@ -221,7 +239,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     }
   }*/
 
-  def featurizeQueriesAndDenotations_GLOW(queries: Seq[Query], denotations: Seq[String], addToIndexer: Boolean, wikiDB: WikipediaInterface, goldKnowledgeSet: Seq[String]): Array[Array[Array[Int]]] = {
+  def featurizeQueriesAndDenotations_GLOW(queries: Seq[Query], denotations: Seq[String], addToIndexer: Boolean, wikiDB: WikipediaInterface, goldKnowledgeSet: Seq[String]): Array[Array[FeatureRep]] = {
     val queryOutcomes = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val queryNonemptyList = queryOutcomes.map(_.isEmpty);
     val ment = queries.head.originalMent;
@@ -323,9 +341,12 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
 
 
     Array.tabulate(queries.size, denotations.size)((queryIdx, denIdx) => {
-      val feats = new ArrayBuffer[Int];
+      //val feats = new ArrayBuffer[Int];
+      val feats = new FeatureBuilder
       def feat(str: String) = addFeat(str, feats, addToIndexer);
-      def featUpToVal(str: String, vv: Int) = {
+      def featv(str: String, v: Double) = addFeat(str, v.asInstanceOf[Float], feats, addToIndexer)
+
+      /*def featUpToVal(str: String, vv: Int) = {
         // there is some infty in the value, so dividing by zero or something...
         if(vv == Integer.MAX_VALUE) {
           feat(str + "max-int-val")
@@ -335,6 +356,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
           }
         }
       }
+      */
       /*for(p <- PMINGDvals)
         for(f <- p(denIdx))
           feat(f)
@@ -361,13 +383,13 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
           feat("MatchesQueryUpToParen=" + queryDescriptorWithProper + "-" + (den.substring(0, den.indexOf("(")).trim.toLowerCase == queryStr.toLowerCase))
         }
         for(i <- 0 until 4) {
-          featUpToVal("CompariableWordsLog-"+i+"=", Math.ceil(Math.log(denotationSim(denIdx)(i) / denotationSimMax(i) * 10000)).asInstanceOf[Int])
+          featv("CompariableWordsLog-"+i+"=", Math.log(denotationSim(denIdx)(i) / denotationSimMax(i)))
           feat("CompariableIsMaxWordSim-"+i+"=" + (denotationSim(denIdx)(i) == denotationSimMax(i)))
           feat("CompariableWordsAboveAvg-"+i+"=" + (denotationSim(denIdx)(i) > denotationSimAvg(i)))
           //featUpToVal("CompariableWordsReweight-"+i+"=", Math.floor(denotationSim(denIdx)(i) / denotationSimMax(i) * 10).asInstanceOf[Int])
         }
         for(i <- 0 until pmingdvals(denIdx).size) {
-          featUpToVal("PMINGD-VEC-" + i + "=", Math.ceil(Math.log(pmingdvals(denIdx)(i) / maxpmingd(i) * 10000)).asInstanceOf[Int])
+          featv("PMINGD-VEC-" + i + "=", Math.log(pmingdvals(denIdx)(i) / maxpmingd(i)))
           //featUpToVal("PMINGD-log-VEC-" + i + "=", Math.ceil(Math.log(pmingdvals(denIdx)(i))).asInstanceOf[Int])
           if(maxpmingd(i) == pmingdvals(denIdx)(i)) {
             feat("PMINGD-max-VEC-"+i)
@@ -376,7 +398,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
       } else {
         feat("Impossible");
       }
-      feats.toArray;
+      feats.makeFinal
     });
   }
   
