@@ -27,7 +27,7 @@ sealed trait IntArray extends mutable.ArrayLike[Int, Array[Int]] /*with IndexedS
   }
   override protected[this] def newBuilder : mutable.Builder[Int,Array[Int]] = {
     println("IntArray get newBuilder")
-    null
+    ???
   }
 
   override def seq = new IntArraySeq(this)

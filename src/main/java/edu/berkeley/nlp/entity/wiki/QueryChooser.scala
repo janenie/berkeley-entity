@@ -145,13 +145,14 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     (denotations.map(wikiDB.linksDB.getInLinksSetUseCache(_)), denotations.map(wikiDB.linksDB.getOutLinksSetUseCache(_)))
   }
 
-  val logsv = (0 until 3000).map(Math.log(_))
+  val logsv = (0 until 3000).map(i => Math.log(i + .001))
 
+  // approx the log, but avoid zero since that will give -inf
   def logs(i: Int) = {
     if(i < logsv.size)
       logsv(i)
     else
-      Math.log(i)
+      Math.log(i + .001)
   }
 
   def unionSize[T](ss: Set[T]*) = {
@@ -177,11 +178,13 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     ret
   }
 
+  // normalized google distance
   def NGD[T](a: Set[T], b: Set[T], wsize: Int) : Double = {
     (logs(math.max(a.size, b.size)) - logs(intersectSize(a,b))) /
       (logs(wsize) - logs(math.min(a.size,b.size)))
   }
 
+  // pointwise mutual information
   def PMI[T](a: Set[T], b: Set[T], wsize: Int) : Double = {
     // TODO: ? the use of wsize here does not make since
     // must be misunderstanding something
@@ -252,7 +255,10 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     // which must mean that there is an issue with the wikipedia query extracting system
     val (refLinksIn, refLinksOut) = getDentationLinksSets(denotations, wikiDB)
 
-    val totalTitles = otherGoldLinksIn.foldLeft(Set[Int]())(_ | _) | otherGoldLinksOut.foldLeft(Set[Int]())(_ | _) | refLinksIn.foldLeft(Set[Int]())(_ | _) | refLinksOut.foldLeft(Set[Int]())(_ | _)
+    val totalTitles = otherGoldLinksIn.foldLeft(Set[Int]())(_ | _) |
+      otherGoldLinksOut.foldLeft(Set[Int]())(_ | _) |
+      refLinksIn.foldLeft(Set[Int]())(_ | _) |
+      refLinksOut.foldLeft(Set[Int]())(_ | _)
 
     val linkInd = denotations.map(d => {
       val id = wikiDB.linksDB.getPageId(d.replace(" ", "_"))
@@ -343,8 +349,10 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     Array.tabulate(queries.size, denotations.size)((queryIdx, denIdx) => {
       //val feats = new ArrayBuffer[Int];
       val feats = new FeatureBuilder
-      def feat(str: String) = addFeat(str, feats, addToIndexer);
-      def featv(str: String, v: Double) = addFeat(str, v.asInstanceOf[Float], feats, addToIndexer)
+      def feat(str: String) = addFeat(str, feats, addToIndexer)
+      // TODO: some bug with non finite values, so just filter them
+      def featv(str: String, v: Double) = if(java.lang.Double.isFinite(v))
+        addFeat(str, v.asInstanceOf[Float], feats, addToIndexer)
 
       /*def featUpToVal(str: String, vv: Int) = {
         // there is some infty in the value, so dividing by zero or something...
@@ -383,13 +391,13 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
           feat("MatchesQueryUpToParen=" + queryDescriptorWithProper + "-" + (den.substring(0, den.indexOf("(")).trim.toLowerCase == queryStr.toLowerCase))
         }
         for(i <- 0 until 4) {
-          featv("CompariableWordsLog-"+i+"=", Math.log(denotationSim(denIdx)(i) / denotationSimMax(i)))
+          featv("CompariableWordsLog-"+i+"=", (denotationSim(denIdx)(i) / (denotationSimMax(i) + .001) ))
           feat("CompariableIsMaxWordSim-"+i+"=" + (denotationSim(denIdx)(i) == denotationSimMax(i)))
           feat("CompariableWordsAboveAvg-"+i+"=" + (denotationSim(denIdx)(i) > denotationSimAvg(i)))
           //featUpToVal("CompariableWordsReweight-"+i+"=", Math.floor(denotationSim(denIdx)(i) / denotationSimMax(i) * 10).asInstanceOf[Int])
         }
         for(i <- 0 until pmingdvals(denIdx).size) {
-          featv("PMINGD-VEC-" + i + "=", Math.log(pmingdvals(denIdx)(i) / maxpmingd(i)))
+          featv("PMINGD-VEC-" + i + "=", (pmingdvals(denIdx)(i) / (maxpmingd(i) + .001) ))
           //featUpToVal("PMINGD-log-VEC-" + i + "=", Math.ceil(Math.log(pmingdvals(denIdx)(i))).asInstanceOf[Int])
           if(maxpmingd(i) == pmingdvals(denIdx)(i)) {
             feat("PMINGD-max-VEC-"+i)

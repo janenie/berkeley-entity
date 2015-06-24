@@ -32,14 +32,29 @@ object FeatureRep {
 
   private var nextWeightedIndex = 0
 
-  private val weighteMap = new mutable.HashMap[Int,Int]()
+  private val weightMap = new mutable.HashMap[Int,Int]()
+
+  private val weightMapReverse = new mutable.HashMap[Int,Int]()
 
   def getWeightedMap(id: Int) = {
-    weighteMap.getOrElseUpdate(id, {
+    weightMap.getOrElseUpdate(id, {
       nextWeightedIndex += 1
       assert(nextWeightedIndex < numWeightedFeatures)
+      weightMapReverse += ((nextWeightedIndex - 1, id))
       nextWeightedIndex - 1
     })
+  }
+
+  def mapToOrgValue(v: Int): Int = {
+    if(v < numWeightedFeatures) {
+      weightMapReverse.getOrElse(v, -1)
+    } else {
+      if(weightMap.contains(v)) {
+        -1
+      } else {
+        v - numWeightedFeatures
+      }
+    }
   }
 
 }

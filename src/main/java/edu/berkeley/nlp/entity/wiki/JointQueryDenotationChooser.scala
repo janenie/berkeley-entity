@@ -360,7 +360,9 @@ object JointQueryDenotationChooser {
 
     println("feature weights:")
     weights.zipWithIndex.sortBy(v => Math.abs(v._1)).foreach(v =>{
-      println(featIndexer.getObject(v._2)+": "+v._1)
+      val vv = FeatureRep.mapToOrgValue(v._2)
+      if(vv != -1)
+        println(featIndexer.getObject(vv)+": "+v._1)
     })
     println()
 
@@ -390,7 +392,7 @@ object JointQueryDenotationChooser {
           }
         }
         if(qq != -1) {
-          chooser.printEverything(t.queries, wikiDB, qq, t.otherLinks)
+          //chooser.printEverything(t.queries, wikiDB, qq, t.otherLinks)
           /*println(
             s"""Correct item in place: $qq
                 |\tcorrect value: ${picks(qq)}
