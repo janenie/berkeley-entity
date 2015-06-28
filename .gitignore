@@ -7,3 +7,5 @@ project/project/
 project/target/
 target/
 specify_execDir/
+logs/
+word2vec-index/
