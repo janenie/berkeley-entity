@@ -2,7 +2,7 @@ package edu.berkeley.nlp.entity.wikivec
 
 import java.io._
 
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface
+import edu.berkeley.nlp.entity.wiki.WikipediaRedirectsDB
 import edu.berkeley.nlp.futile.fig.basic.IOUtils
 import org.deeplearning4j.text.sentenceiterator.labelaware.LabelAwareSentenceIterator
 import org.deeplearning4j.text.sentenceiterator.{SentenceIterator, SentencePreProcessor}
@@ -19,7 +19,7 @@ case class WikipediaRedirectPage(val title: String, val to: String) extends Wiki
 case class WikipediaNormalPage(val title: String, val content: String) extends WikipediaPage
 
 class WikipediaInputStream(val wikiDumpPath: String,
-                           val wikipediaCacheInterface: WikipediaInterface) extends SentenceIterator with LabelAwareSentenceIterator {
+                           val wikipediaRedirects: WikipediaRedirectsDB) extends SentenceIterator with LabelAwareSentenceIterator {
 
   private var wikiIterator: Iterator[String] = null
 
@@ -94,7 +94,11 @@ class WikipediaInputStream(val wikiDumpPath: String,
         loadNextPage
       }
       case WikipediaNormalPage(title, content) => {
+        //val wm = new WikiModel("", "")
+        //wm.render(new PlainTextConverter(), content)
         val text = linksToTokens(content)
+          .replaceAll("&lt;.+?&gt;", "")
+          .replaceAll("\\{\\{.+?\\}\\}", "")
           .replaceAll("[^A-Za-z0-9_\\.\\?\\!\n]", " ")
           .replaceAll("[ \\t\\x0B\\f\\r]+", " ")
           .replaceAll("\\n+", "\\n")
@@ -107,38 +111,62 @@ class WikipediaInputStream(val wikiDumpPath: String,
   private def linksToTokens(s: String) = {
     val buf = new StringBuffer()
     var lastPlace = 0
-    var startIdx = s.indexOf("[[")
+    var startIdx = s.indexOf('[')
     while(startIdx >= 0) {
-      val endIdx = s.indexOf("]]", startIdx)
-      val pipeIdx = s.indexOf("|", startIdx)
-      val linkDest = if (pipeIdx >= 0 && pipeIdx < endIdx) {
-        s.substring(startIdx + 2, pipeIdx);
-      } else if (endIdx >= startIdx + 2) {
-        s.substring(startIdx + 2, endIdx);
+      if(s.charAt(startIdx + 1) == '[') {
+        // this is an internal link of the form [[the page|the surface text]]
+        var endIdx = s.indexOf("]]", startIdx)
+        if(s.indexOf('[', startIdx) < endIdx) {
+          // there is some [ inside this link
+          // such a hack, but try and match up the two items
+          endIdx = startIdx + 2
+          var cnt = 2
+          while(cnt > 0 && endIdx < s.length) {
+            s.charAt(endIdx) match {
+              case '[' => { cnt += 1 }
+              case ']' => { cnt -= 1 }
+              case _ => {}
+            }
+            endIdx += 1
+          }
+        }
+        val pipeIdx = s.indexOf('|', startIdx)
+        val linkDest = if (pipeIdx >= 0 && pipeIdx < endIdx) {
+          s.substring(startIdx + 2, pipeIdx);
+        } else if (endIdx >= startIdx + 2) {
+          s.substring(startIdx + 2, endIdx);
+        } else {
+          ""
+        }
+        if (!linkDest.isEmpty) {
+          buf.append(s.substring(lastPlace, startIdx))
+          buf.append(" ")
+          buf.append(wikipediaRedirects.followRedirect(linkDest).replace(' ', '_').replace("(", "_LRB_").replace(")", "_RRB_"))
+          buf.append(" ")
+          lastPlace = endIdx + 2
+        }
+        startIdx = s.indexOf('[', endIdx + 2)
       } else {
-        ""
-      }
-      if(!linkDest.isEmpty) {
+        // this is an external link of the form [http://adsfasdf.com some surface text]
+        val endIdx = s.indexOf(']', startIdx)
+        val sep = s.indexOf(' ', startIdx)
         buf.append(s.substring(lastPlace, startIdx))
-        buf.append(" ")
-        buf.append(wikipediaCacheInterface.redirectsDB.followRedirect(linkDest.replace(" ", "_")))
-        buf.append(" ")
-        lastPlace = endIdx + 2
-        startIdx = s.indexOf("[[", endIdx + 2)
-      } else
-        startIdx = s.indexOf("[[", startIdx + 2)
+        if(sep != -1 && sep < endIdx)
+          buf.append(s.substring(sep, endIdx))
+        startIdx = s.indexOf('[', endIdx + 1)
+        lastPlace = endIdx + 1
+      }
     }
-    buf.append(s.substring(lastPlace, s.length))
+    if(lastPlace < s.length)
+      buf.append(s.substring(lastPlace, s.length))
     buf.toString
   }
-
 
   override def hasNext: Boolean = {
     if(currentPage != null) return true
     loadNextPage
     currentPage != null
   }
-
 
   override def finish: Unit = {
     // TODO:
@@ -153,10 +181,15 @@ class WikipediaInputStream(val wikiDumpPath: String,
 
   override def setPreProcessor(p: SentencePreProcessor) = preprocessor = p
 
-  override def currentLabel: String = currentPage match {
-    case null => null
-    case WikipediaNormalPage(title, _) => title
-    case WikipediaRedirectPage(title, _) => title
+  override def currentLabel: String = {
+    val s = currentPage match {
+      case null => null
+      case WikipediaNormalPage(title, _) => title
+      case WikipediaRedirectPage(title, _) => title
+    }
+    if(s != null) {
+      s.replace(' ', '_').replace("(", "_LRB_").replace(")", "_RRB_")
+    } else null
   }
 
   override def currentLabels: java.util.List[String] = List(currentLabel)

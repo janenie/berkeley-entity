@@ -1,12 +1,11 @@
 package edu.berkeley.nlp.entity.wiki
 
-import edu.berkeley.nlp.entity.StringUnifier
+import edu.berkeley.nlp.entity.{GUtil, StringUnifier}
 import edu.berkeley.nlp.futile.fig.basic.IOUtils
-import scala.collection.mutable.HashMap
-import edu.berkeley.nlp.futile.util.Counter
+import edu.berkeley.nlp.futile.util.{Counter, Logger}
+
 import scala.collection.JavaConverters._
-import edu.berkeley.nlp.futile.util.Logger
-import edu.berkeley.nlp.entity.wiki._
+import scala.collection.mutable.HashMap
 
 @SerialVersionUID(1L)
 class WikipediaRedirectsDB(val redirects: HashMap[String,String]) extends Serializable {
@@ -130,7 +129,7 @@ object WikipediaRedirectsDB {
           val startIdx = line.indexOf("\"") + 1;
           val endIdx = line.indexOf("\"", startIdx);
           val redirectTitle = maybeLc(line.substring(startIdx, endIdx), lowercase);
-          if (titleGivenSurfaceDB.allPossibleTitlesLowercase.contains(currentPageTitle.toLowerCase)) {
+          if (titleGivenSurfaceDB == null || titleGivenSurfaceDB.allPossibleTitlesLowercase.contains(currentPageTitle.toLowerCase)) {
             redirects.put(strUnifier(currentPageTitle), strUnifier(redirectTitle));
           }
           doneWithThisPage = true;
@@ -138,5 +137,11 @@ object WikipediaRedirectsDB {
       }
     }
     new WikipediaRedirectsDB(redirects);
+  }
+
+  def main(args: Array[String]) = {
+    println(args.mkString(" "))
+    val res = processWikipedia(wikipediaPath = args(0), titleGivenSurfaceDB = null, strUnifier = new StringUnifier)
+    GUtil.saveGz(res, args(1))
   }
 }

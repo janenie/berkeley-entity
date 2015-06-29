@@ -3,7 +3,7 @@ package edu.berkeley.nlp.entity.wikivec
 import java.io.File
 
 import edu.berkeley.nlp.entity.{IntArray, GUtil}
-import edu.berkeley.nlp.entity.wiki.WikipediaInterface
+import edu.berkeley.nlp.entity.wiki.{WikipediaRedirectsDB, WikipediaInterface}
 import edu.berkeley.nlp.futile.LightRunner
 
 /**
@@ -18,11 +18,19 @@ object SimpleRun {
 
   val wikiDump = "enwikipedia-stuff.xml"
   val wikiInterface = "wiki-interface.ser.gz"
+  val wikiRedirects = "" // "wiki-redirdb.ser.gz"
   val savedVocab = ""
 
   lazy val wikipediaInterface = {
     IntArray.prefixDir = new File(wikiInterface).getParent
     GUtil.loadGz(wikiInterface).asInstanceOf[WikipediaInterface]
+  }
+
+  lazy val wikipediaRedirectInterface = {
+    if(!wikiRedirects.isEmpty)
+      GUtil.loadGz(wikiRedirects).asInstanceOf[WikipediaRedirectsDB]
+    else
+      wikipediaInterface.redirectsDB
   }
 
   def main(args: Array[String]) = {
@@ -31,7 +39,7 @@ object SimpleRun {
 
 
 
-    val input = new WikipediaInputStream(wikiDump, wikipediaInterface)
+    val input = new WikipediaInputStream(wikiDump, wikipediaRedirectInterface)
 
     val wvec = new WikipediaVector(sentenceIterator = input)
 
