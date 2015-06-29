@@ -22,16 +22,31 @@ libraryDependencies += (
       exclude("com.sun.jmx", "jmxri")
       //exclude("org.deeplearning4j","deeplearning4j-scaleout-akka")
       exclude("org.deeplearning4j", "deeplearning4j-scaleout-zookeeper")
-      exclude("org.spark-project.akka", "akka-actor_2.10")
-      exclude("org.spark-project.akka", "akka-remote_2.10")
-      exclude("org.spark-project.akka", "akka-slf4j_2.10")
+      excludeAll(ExclusionRule(organization = "org.spark-project.akka"),
+      ExclusionRule(organization = "com.typesafe.akka"))
   )
 
+
+
+//exclude("org.spark-project.akka", "akka-actor_2.10")
+//exclude("org.spark-project.akka", "akka-remote_2.10")
+//exclude("org.spark-project.akka", "akka-slf4j_2.10")
+
 libraryDependencies ++= Seq(
-  "org.spark-project.akka" % "akka-actor_2.11" % "2.3.4-spark",
-  "org.spark-project.akka" % "akka-remote_2.11" % "2.3.4-spark",
-  "org.spark-project.akka" % "akka-slf4j_2.11" % "2.3.4-spark"
+  "com.typesafe.akka" % "akka-actor_2.11" % "2.3.4",
+  "com.typesafe.akka" % "akka-cluster_2.11" % "2.3.4",
+  "com.typesafe.akka" % "akka-contrib_2.11" % "2.3.4",
+  "com.typesafe.akka" % "akka-persistence-experimental_2.11"% "2.3.4",
+  "com.typesafe.akka" % "akka-remote_2.11" % "2.3.4",
+  "com.typesafe.akka" % "akka-slf4j_2.11" % "2.3.4"
 )
+
+//libraryDependencies ++= Seq(
+//  "org.spark-project.akka" % "akka-actor_2.11" % "2.3.4-spark",
+//  "org.spark-project.akka" % "akka-remote_2.11" % "2.3.4-spark",
+//  "org.spark-project.akka" % "akka-slf4j_2.11" % "2.3.4-spark"
+//)
+
 
 libraryDependencies += (
   "org.nd4j" % "nd4j-jblas" % "0.0.3.5.5.4"

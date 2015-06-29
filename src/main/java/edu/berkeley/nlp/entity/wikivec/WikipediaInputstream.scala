@@ -54,7 +54,7 @@ class WikipediaInputStream(val wikiDumpPath: String) extends SentenceIterator wi
         val endIdx = line.indexOf("\"", startIdx);
         redirect = line.substring(startIdx, endIdx)
         doneWithPage = true
-      } else if(line.contains("<text>")) {
+      } else if(line.contains("<text")) {
         val textStart = line.indexOf(">") + 1
         var textEnd = line.indexOf("</text>")
         if(textEnd != -1) {
@@ -92,6 +92,7 @@ class WikipediaInputStream(val wikiDumpPath: String) extends SentenceIterator wi
         loadNextPage
       }
       case WikipediaNormalPage(title, content) => {
+        
         currentSentenceIterator = content.toLowerCase.split("[\\.\\?\\!\n]").iterator
       }
     }
