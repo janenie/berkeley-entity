@@ -1,6 +1,8 @@
 package edu.berkeley.nlp.entity.wikivec
 
-import edu.berkeley.nlp.entity.GUtil
+import java.io.File
+
+import edu.berkeley.nlp.entity.{IntArray, GUtil}
 import edu.berkeley.nlp.entity.wiki.WikipediaInterface
 import edu.berkeley.nlp.futile.LightRunner
 
@@ -19,6 +21,7 @@ object SimpleRun {
   val savedVocab = ""
 
   lazy val wikipediaInterface = {
+    IntArray.prefixDir = new File(wikiInterface).getParent
     GUtil.loadGz(wikiInterface).asInstanceOf[WikipediaInterface]
   }
 
@@ -28,7 +31,7 @@ object SimpleRun {
 
 
 
-    val input = new WikipediaInputStream(wikiDump)
+    val input = new WikipediaInputStream(wikiDump, wikipediaInterface)
 
     val wvec = new WikipediaVector(sentenceIterator = input)
 

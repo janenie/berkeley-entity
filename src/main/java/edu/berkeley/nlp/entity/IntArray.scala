@@ -87,9 +87,7 @@ class BufferIntArray (ib: IntBuffer, private var bufferName: String, private var
 
     // stupid hack to make sure that we have read all the values at least once
     // so that when we randomly access them they should all already be cached
-    var ss = 0
-    for(i <- 0 until lengthv)
-      ss += intBuffer.get(i)
+    buffer.load()
   }
 
   override def apply(i: Int) = {

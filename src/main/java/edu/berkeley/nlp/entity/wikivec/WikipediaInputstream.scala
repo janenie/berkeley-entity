@@ -2,6 +2,7 @@ package edu.berkeley.nlp.entity.wikivec
 
 import java.io._
 
+import edu.berkeley.nlp.entity.wiki.WikipediaInterface
 import edu.berkeley.nlp.futile.fig.basic.IOUtils
 import org.deeplearning4j.text.sentenceiterator.labelaware.LabelAwareSentenceIterator
 import org.deeplearning4j.text.sentenceiterator.{SentenceIterator, SentencePreProcessor}
@@ -17,7 +18,8 @@ abstract class WikipediaPage
 case class WikipediaRedirectPage(val title: String, val to: String) extends WikipediaPage
 case class WikipediaNormalPage(val title: String, val content: String) extends WikipediaPage
 
-class WikipediaInputStream(val wikiDumpPath: String) extends SentenceIterator with LabelAwareSentenceIterator {
+class WikipediaInputStream(val wikiDumpPath: String,
+                           val wikipediaCacheInterface: WikipediaInterface) extends SentenceIterator with LabelAwareSentenceIterator {
 
   private var wikiIterator: Iterator[String] = null
 
@@ -92,11 +94,44 @@ class WikipediaInputStream(val wikiDumpPath: String) extends SentenceIterator wi
         loadNextPage
       }
       case WikipediaNormalPage(title, content) => {
-        
-        currentSentenceIterator = content.toLowerCase.split("[\\.\\?\\!\n]").iterator
+        val text = linksToTokens(content)
+          .replaceAll("[^A-Za-z0-9_\\.\\?\\!\n]", " ")
+          .replaceAll("[ \\t\\x0B\\f\\r]+", " ")
+          .replaceAll("\\n+", "\\n")
+          .toLowerCase
+        currentSentenceIterator = text.split("[\\.\\?\\!\n]").iterator
       }
     }
   }
+
+  private def linksToTokens(s: String) = {
+    val buf = new StringBuffer()
+    var lastPlace = 0
+    var startIdx = s.indexOf("[[")
+    while(startIdx >= 0) {
+      val endIdx = s.indexOf("]]", startIdx)
+      val pipeIdx = s.indexOf("|", startIdx)
+      val linkDest = if (pipeIdx >= 0 && pipeIdx < endIdx) {
+        s.substring(startIdx + 2, pipeIdx);
+      } else if (endIdx >= startIdx + 2) {
+        s.substring(startIdx + 2, endIdx);
+      } else {
+        ""
+      }
+      if(!linkDest.isEmpty) {
+        buf.append(s.substring(lastPlace, startIdx))
+        buf.append(" ")
+        buf.append(wikipediaCacheInterface.redirectsDB.followRedirect(linkDest.replace(" ", "_")))
+        buf.append(" ")
+        lastPlace = endIdx + 2
+        startIdx = s.indexOf("[[", endIdx + 2)
+      } else
+        startIdx = s.indexOf("[[", startIdx + 2)
+    }
+    buf.append(s.substring(lastPlace, s.length))
+    buf.toString
+  }
+
 
   override def hasNext: Boolean = {
     if(currentPage != null) return true
