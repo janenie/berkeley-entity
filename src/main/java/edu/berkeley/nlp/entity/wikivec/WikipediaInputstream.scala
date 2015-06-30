@@ -65,6 +65,8 @@ class WikipediaInputStream(val wikiDumpPath: String,
           var curLine = line.substring(textStart)
           while(textEnd == -1) {
             text.append(curLine)
+            if(!wikiIterator.hasNext)
+              return null
             curLine = wikiIterator.next
             textEnd = curLine.indexOf("</text>")
           }
@@ -130,6 +132,8 @@ class WikipediaInputStream(val wikiDumpPath: String,
             endIdx += 1
           }
         }
+        if(endIdx == -1)
+          endIdx = s.length
         val pipeIdx = s.indexOf('|', startIdx)
         val linkDest = if (pipeIdx >= 0 && pipeIdx < endIdx) {
           s.substring(startIdx + 2, pipeIdx);
@@ -148,9 +152,11 @@ class WikipediaInputStream(val wikiDumpPath: String,
         startIdx = s.indexOf('[', endIdx + 2)
       } else {
         // this is an external link of the form [http://adsfasdf.com some surface text]
-        val endIdx = s.indexOf(']', startIdx)
+        var endIdx = s.indexOf(']', startIdx)
         val sep = s.indexOf(' ', startIdx)
         buf.append(s.substring(lastPlace, startIdx))
+        if(endIdx == -1)
+          endIdx = s.length
         if(sep != -1 && sep < endIdx)
           buf.append(s.substring(sep, endIdx))
         startIdx = s.indexOf('[', endIdx + 1)
@@ -163,9 +169,11 @@ class WikipediaInputStream(val wikiDumpPath: String,
   }
 
   override def hasNext: Boolean = {
-    if(currentPage != null) return true
+    if(currentSentenceIterator != null)
+      if(currentSentenceIterator.hasNext)
+      return true
     loadNextPage
-    currentPage != null
+    currentSentenceIterator.hasNext
   }
 
   override def finish: Unit = {
@@ -188,7 +196,7 @@ class WikipediaInputStream(val wikiDumpPath: String,
       case WikipediaRedirectPage(title, _) => title
     }
     if(s != null) {
-      s.replace(' ', '_').replace("(", "_LRB_").replace(")", "_RRB_")
+      s.replace(' ', '_').replace("(", "_LRB_").replace(")", "_RRB_").toLowerCase()
     } else null
   }
 
@@ -197,7 +205,11 @@ class WikipediaInputStream(val wikiDumpPath: String,
   override def nextSentence: String = {
     if(currentSentenceIterator == null || !currentSentenceIterator.hasNext)
       loadNextPage
-    currentSentenceIterator.next()
+    try {
+      currentSentenceIterator.next()
+    } catch {
+      case e: NoSuchElementException => null
+    }
   }
 
 }

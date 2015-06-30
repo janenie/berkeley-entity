@@ -60,5 +60,6 @@ libraryDependencies += (
 mergeStrategy in assembly := {
   //case x if Assembly.isConfigFile(x) => MergeStrategy.concat
   case "META-INF/MANIFEST.MF" => MergeStrategy.discard
+  case "reference.conf" => MergeStrategy.concat
   case s: String => MergeStrategy.first
 }
