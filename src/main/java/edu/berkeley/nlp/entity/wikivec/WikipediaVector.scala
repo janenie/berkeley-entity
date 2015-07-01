@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLong
 import akka.actor.ActorSystem
 import org.deeplearning4j.bagofwords.vectorizer.TfidfVectorizer
 import org.deeplearning4j.models.embeddings.inmemory.InMemoryLookupTable
-import org.deeplearning4j.models.paragraphvectors
+import org.deeplearning4j.models.{word2vec, paragraphvectors}
 import org.deeplearning4j.models.paragraphvectors.ParagraphVectors
 import org.deeplearning4j.models.word2vec.{VocabWord, Word2Vec}
 import org.deeplearning4j.models.word2vec.wordstore.inmemory.InMemoryLookupCache
@@ -30,15 +30,20 @@ import scala.collection.JavaConversions._
 class WikipediaVector(sentenceIterator: SentenceIterator = null,
                       documentIterator: DocumentIterator = null,
                       learningRate: Double = 2.5e-2,
-                      iterations: Int = 1) extends Word2Vec {
+                      iterations: Int = 1,
+                       _layerSize: Int = 100) extends Word2Vec {
 
-  type sentenceLabeledType = Pair[util.List[VocabWord],util.Collection[String]]
+  type SentenceLabeledType = Pair[util.List[VocabWord], util.Collection[VocabWord]]
+  type RandomIterator = AtomicLong
 
   // set fields from super class
   sentenceIter = sentenceIterator
   docIter = documentIterator
   alpha.set(learningRate)
   numIterations = iterations
+  layerSize = _layerSize
+  saveVocab = false // some bug when reloading the saved vocab
+
 
   if(tokenizerFactory == null)
     tokenizerFactory = new UimaTokenizerFactory()
@@ -54,17 +59,23 @@ class WikipediaVector(sentenceIterator: SentenceIterator = null,
       .cache(vocab)
       .vectorLength(layerSize)
       .build()
+    lookupTable.resetWeights(true)
   }
 
 
 
   override  def fit = {
-    buildVocab()
+    val loaded = buildVocab()
+
+    if(!loaded && saveVocab)
+      vocab.saveVocab()
 
     if(stopWords == null)
       readStopWords()
 
-    val nextRandom = new java.util.Random()
+    val nextRandom = new RandomIterator(0) //new java.util.Random()
+
+    totalWords = vectorizer.numWordsEncountered() * numIterations
 
     val exec: ExecutorService = new ThreadPoolExecutor(Runtime.getRuntime.availableProcessors,
       Runtime.getRuntime.availableProcessors, 0L,
@@ -82,12 +93,12 @@ class WikipediaVector(sentenceIterator: SentenceIterator = null,
       }
     })
 
-    val batch2 = new ConcurrentLinkedDeque[Pair[util.List[VocabWord], util.Collection[VocabWord]]]()
+    val batch2 = new ConcurrentLinkedDeque[SentenceLabeledType]()
 
 
     // make batches out of all sentence examples?
     vectorizer.index().eachDocWithLabels(new base.Function[Pair[util.List[VocabWord], util.Collection[String]], Void] {
-      override def apply(input: sentenceLabeledType): Void = {
+      override def apply(input: Pair[util.List[VocabWord], util.Collection[String]]): Void = {
         val batch = new util.ArrayList[VocabWord]()
         // appears to add the sentence to the batch
         // this is the place sampling happens if there are a number of common words
@@ -104,7 +115,7 @@ class WikipediaVector(sentenceIterator: SentenceIterator = null,
         for(s <- input.getSecond) {
           labels.add(vocab.wordFor(s))
         }
-        batch2.add(new Pair(batch, labels))
+        batch2.add(new SentenceLabeledType(batch, labels))
 
         null
       }
@@ -131,12 +142,15 @@ class WikipediaVector(sentenceIterator: SentenceIterator = null,
   override def buildVocab(): Boolean =  {
     readStopWords()
 
+    /*
+    // TODO: some bug
     if (vocab.vocabExists) {
       Word2Vec.log.info("Loading vocab...")
       vocab.loadVocab
       lookupTable.resetWeights
       return true
     }
+    */
 
     if (invertedIndex == null)
       invertedIndex = new LuceneInvertedIndex.Builder().cache(vocab).stopWords(stopWords).build
@@ -156,7 +170,7 @@ class WikipediaVector(sentenceIterator: SentenceIterator = null,
     }
     else if (vocab.numWords < 2) vectorizer.fit
 
-    true
+    false
   }
 
   /**
@@ -166,7 +180,7 @@ class WikipediaVector(sentenceIterator: SentenceIterator = null,
    * @param random
    * @param currMiniBatch
    *
-  protected def addWords(sentence: List[VocabWord], random: Random, currMiniBatch: java.util.List[VocabWord]): Unit = {
+  protected def addWords(sentence: List[VocabWord], random: RandomIterator, currMiniBatch: java.util.List[VocabWord]): Unit = {
     for(wrd <- sentence) {
       if(wrd != null)
         currMiniBatch.add(wrd)
@@ -174,44 +188,53 @@ class WikipediaVector(sentenceIterator: SentenceIterator = null,
   }*/
 
 
-  protected def doIteration(batch2: util.Queue[sentenceLabeledType],
+  protected def doIteration(batch2: util.Queue[SentenceLabeledType],
                             numWordsSoFar: AtomicLong,
-                            nextRandom: Random): Unit = {
+                            nextRandom: RandomIterator): Unit = {
     val actorSystem = ActorSystem.create()
-    Parallelization.iterateInParallel(batch2, new Parallelization.RunnableWithParams[sentenceLabeledType] {
-      override def run(sentenceWithLabel: sentenceLabeledType, args: Array[Object]): Unit = {
+    Parallelization.iterateInParallel(batch2, new Parallelization.RunnableWithParams[SentenceLabeledType] {
+      override def run(sentenceWithLabel: SentenceLabeledType, args: Array[Object]): Unit = {
         val alpha = Math.max(minLearningRate, WikipediaVector.this.alpha.get() * (1 - 1.0 * numWordsSoFar.get().asInstanceOf[Double] / totalWords))
         // TODO: logging here
-        trainSentence(sentenceWithLabel, nextRandom, alpha)
-
+        try {
+          trainSentence(sentenceWithLabel, nextRandom, alpha)
+        } catch {
+          case e: Throwable => {
+            println(e)
+            e.printStackTrace()
+            System.exit(1)
+            throw e
+          }
+        }
       }
     }, actorSystem)
   }
 
-  protected def trainSentence(sentenceWithLabel: sentenceLabeledType, random: Random, alpha: Double) = {
+  protected def trainSentence(sentenceWithLabel: SentenceLabeledType, random: RandomIterator, alpha: Double) = {
     if(sentenceWithLabel == null || sentenceWithLabel.getFirst.isEmpty) {}
     else {
       for(i <- 0 until sentenceWithLabel.getFirst.size()) {
-
+        random.set(random.get()* 25214903917L + 11)
+        dbow(i, sentenceWithLabel, (random.get() % window).asInstanceOf[Int], random, alpha)
       }
     }
   }
 
-  protected def dbow(i: Int, sentenceWithLabel: sentenceLabeledType, b: Int, nextRandom: Random, alpha: Double): Unit = {
+  protected def dbow(i: Int, sentenceWithLabel: SentenceLabeledType, b: Int, nextRandom: RandomIterator, alpha: Double): Unit = {
     val word = sentenceWithLabel.getFirst.get(i)
     val sentence = sentenceWithLabel.getFirst
-    val labels = sentenceWithLabel.getSecond
+    val labels = sentenceWithLabel.getSecond.asInstanceOf[util.List[VocabWord]] // gaaa, annoying have to have this cast from a collection to match their other method signatures
 
     if(word == null || sentence.isEmpty)
       return
 
-    val end = window * 2 + 1 0 b
+    val end = window * 2 + 1
     for(a <- b until end) {
       if(a != window) {
         val c = i - window + a
         if(c >= 0 && c < labels.size()) {
           val lastWord = labels.get(c)
-          iterate(word,lastWord,nextRandom,alpha);
+          iterate(word, lastWord, nextRandom,alpha);
         }
       }
     }
