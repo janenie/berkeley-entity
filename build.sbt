@@ -48,8 +48,9 @@ libraryDependencies ++= Seq(
 //)
 
 
-libraryDependencies += (
-  "org.nd4j" % "nd4j-jblas" % "0.0.3.5.5.4"
+libraryDependencies ++= Seq(
+  "org.nd4j" % "nd4j-jblas" % "0.0.3.5.5.5",
+  "org.nd4j" % "nd4j-api" % "0.0.3.5.5.5"
   )
 
 libraryDependencies += (

@@ -18,6 +18,7 @@ object SimpleRun {
 
   val wikiDump = "enwikipedia-stuff.xml"
   val wikiInterface = "wiki-interface.ser.gz"
+  val saveTo = "wiki-dump.txt"
   val wikiRedirects = "" // "wiki-redirdb.ser.gz"
   val savedVocab = ""
 
@@ -41,9 +42,11 @@ object SimpleRun {
 
     val input = new WikipediaInputStream(wikiDump, wikipediaRedirectInterface)
 
-    val wvec = new WikipediaVector(sentenceIterator = input)
+    input.dumpTo(saveTo)
 
-    wvec.fit
+    //val wvec = new WikipediaVector(sentenceIterator = input)
+
+    //wvec.fit
   }
 
 }
