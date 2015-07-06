@@ -68,13 +68,13 @@ class BufferFloatArray (ib: FloatBuffer, private var bufferName: String, private
   @transient
   private var floatBuffer: FloatBuffer = ib
 
-  private def writeObject(os: ObjectOutputStream) = {
+  private def writeObject(os: ObjectOutputStream): Unit = {
     os.defaultWriteObject()
     os.writeObject(bufferName)
     os.writeInt(lengthv)
   }
 
-  private def readObject(is: ObjectInputStream) = {
+  private def readObject(is: ObjectInputStream): Unit = {
     is.defaultReadObject()
     bufferName = is.readObject().asInstanceOf[String]
     lengthv = is.readInt()

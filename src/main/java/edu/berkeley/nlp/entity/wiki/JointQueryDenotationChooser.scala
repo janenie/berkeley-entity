@@ -3,6 +3,7 @@ package edu.berkeley.nlp.entity.wiki
 import java.io.File
 
 import edu.berkeley.nlp.entity.lang.Language
+import edu.berkeley.nlp.entity.wikivec.w2vReader
 import edu.berkeley.nlp.futile.LightRunner
 import edu.berkeley.nlp.entity.coref.CorefDocAssembler
 import edu.berkeley.nlp.entity._
@@ -60,7 +61,8 @@ case class JointQueryDenotationExample(val queries: Seq[Query],
  * parameters.
  */
 class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
-                                         val featureIndexer: Indexer[String]) extends LikelihoodAndGradientComputer[JointQueryDenotationExample] {
+                                         val featureIndexer: Indexer[String],
+                                         val word2vec: w2vReader) extends LikelihoodAndGradientComputer[JointQueryDenotationExample] {
   // Used for feature computation
   val queryChooser = new QueryChoiceComputer(wikiDB, featureIndexer)
 
@@ -71,7 +73,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
         //ex.document.contextVectorCache = wikiDB.textDB.makeContextVector(ex.document.documentVectorCache)
       }*/
       ex.cachedFeatsEachQuery = queryChooser.featurizeQueries(ex.queries, addToIndexer)
-      ex.cachedFeatsEachQueryDenotation = queryChooser.featurizeQueriesAndDenotations_GLOW(ex.queries, ex.allDenotations, addToIndexer, wikiDB, ex.otherLinks)
+      ex.cachedFeatsEachQueryDenotation = queryChooser.featurizeQueriesAndDenotations_GLOW(ex.queries, ex.allDenotations, addToIndexer, wikiDB, ex.otherLinks, word2vec)
     }
   }
 
@@ -173,8 +175,8 @@ class JointQueryDenotationChooser(val featureIndexer: Indexer[String],
     computer.computeDenotation(ex, weights)
   }*/
 
-  def pickDenotations(queries: Seq[Query], wikiDB: WikipediaInterface, otherLinks: Seq[String]) : (Seq[(String, Int)], Array[Array[Int]]) = {
-    val computer = new JointQueryDenotationChoiceComputer(wikiDB, featureIndexer);
+  def pickDenotations(queries: Seq[Query], wikiDB: WikipediaInterface, otherLinks: Seq[String], word2vec: w2vReader) : (Seq[(String, Int)], Array[Array[Int]]) = {
+    val computer = new JointQueryDenotationChoiceComputer(wikiDB, featureIndexer, word2vec);
     val denotations = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val dden = Query.extractDenotationSetWithNil(queries, denotations, JointQueryDenotationChooser.maxNumWikificationOptions)
     val ex = new JointQueryDenotationExample(queries, dden, Array[String](), Array[String](), otherLinks);
@@ -184,9 +186,9 @@ class JointQueryDenotationChooser(val featureIndexer: Indexer[String],
       ex.cachedFeatsEachQuery)
   }
 
-  def printEverything(queries: Seq[Query], wikiDB: WikipediaInterface, correctInd: Int, otherLinks: Seq[String]) = {
+  def printEverything(queries: Seq[Query], wikiDB: WikipediaInterface, word2vec: w2vReader, correctInd: Int, otherLinks: Seq[String]) = {
     // just redo the computations so gg
-    val computer = new JointQueryDenotationChoiceComputer(wikiDB, featureIndexer);
+    val computer = new JointQueryDenotationChoiceComputer(wikiDB, featureIndexer, word2vec);
     val denotations = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val dden = Query.extractDenotationSetWithNil(queries, denotations, JointQueryDenotationChooser.maxNumWikificationOptions)
     val ex = new JointQueryDenotationExample(queries, dden, Array[String](), Array[String](), otherLinks);
@@ -286,6 +288,7 @@ object JointQueryDenotationChooser {
   val testDataPath = "data/ace05/dev";
   val wikiPath = "data/ace05/ace05-all-conll-wiki" // contains the wiki links for both items
   val wikiDBPath = "models/wiki-db-ace.ser.gz"
+  val w2vectors = "enwiki-vectors.bin"
 
   val lambda = 1e-8F
   val batchSize = 1
@@ -322,6 +325,7 @@ object JointQueryDenotationChooser {
     // Read in the title given surface database
     IntArray.prefixDir = new File(wikiDBPath).getParent
     val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface];
+    val word2vec = new w2vReader(w2vectors)
     // Make training examples, filtering out those with solutions that are unreachable because
     // they're not good for training
     var trainExs = extractExamples(trainCorefDocs, goldWikification, wikiDB, filterImpossible = true)
@@ -330,7 +334,7 @@ object JointQueryDenotationChooser {
 
     // Extract features
     val featIndexer = new Indexer[String]
-    val computer = new JointQueryDenotationChoiceComputer(wikiDB, featIndexer);
+    val computer = new JointQueryDenotationChoiceComputer(wikiDB, featIndexer, word2vec);
     var lastDocument : Document = null
     for (trainEx <- trainExs) {
       if(trainEx.document != lastDocument) {
@@ -371,7 +375,7 @@ object JointQueryDenotationChooser {
     val results = testExs.map(t => {
       // TODO: need more then one perdicted title
       t.makeDocCache(wikiDB)
-      val (picks, denFeats) = chooser.pickDenotations(t.queries, wikiDB, t.otherLinks) // TOOD: remove hack
+      val (picks, denFeats) = chooser.pickDenotations(t.queries, wikiDB, t.otherLinks, word2vec = word2vec) // TOOD: remove hack
       if(!isCorrect(t.rawCorrectDenotations, picks(0)._1)) {
         // the pick is not correct, attempt to determine if there would have
         // been a better pick that is in the picks list (which basically means all of the

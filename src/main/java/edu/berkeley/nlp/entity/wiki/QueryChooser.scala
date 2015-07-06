@@ -1,5 +1,6 @@
 package edu.berkeley.nlp.entity.wiki
 
+import edu.berkeley.nlp.entity.wikivec.w2vReader
 import edu.berkeley.nlp.entity.{ConllDocReader, GUtil}
 import edu.berkeley.nlp.entity.coref.{CorefDoc, CorefDocAssembler, MentionPropertyComputer}
 import edu.berkeley.nlp.entity.joint.{GeneralTrainer, LikelihoodAndGradientComputer}
@@ -242,7 +243,9 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     }
   }*/
 
-  def featurizeQueriesAndDenotations_GLOW(queries: Seq[Query], denotations: Seq[String], addToIndexer: Boolean, wikiDB: WikipediaInterface, goldKnowledgeSet: Seq[String]): Array[Array[FeatureRep]] = {
+  def featurizeQueriesAndDenotations_GLOW(queries: Seq[Query], denotations: Seq[String], addToIndexer: Boolean,
+                                          wikiDB: WikipediaInterface, goldKnowledgeSet: Seq[String],
+                                          word2vec: w2vReader): Array[Array[FeatureRep]] = {
     val queryOutcomes = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val queryNonemptyList = queryOutcomes.map(_.isEmpty);
     val ment = queries.head.originalMent;

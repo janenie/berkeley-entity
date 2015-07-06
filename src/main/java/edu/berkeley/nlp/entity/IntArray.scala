@@ -70,13 +70,13 @@ class BufferIntArray (ib: IntBuffer, private var bufferName: String, private var
   @transient
   private var intBuffer: IntBuffer = ib
 
-  private def writeObject(os: ObjectOutputStream) = {
+  private def writeObject(os: ObjectOutputStream): Unit = {
     os.defaultWriteObject()
     os.writeObject(bufferName)
     os.writeInt(lengthv)
   }
 
-  private def readObject(is: ObjectInputStream) = {
+  private def readObject(is: ObjectInputStream): Unit = {
     is.defaultReadObject()
     bufferName = is.readObject().asInstanceOf[String]
     lengthv = is.readInt()
@@ -85,7 +85,6 @@ class BufferIntArray (ib: IntBuffer, private var bufferName: String, private var
     val buffer = file.getChannel.map(FileChannel.MapMode.READ_WRITE, 0, lengthv * 4)
     intBuffer = buffer.asIntBuffer()
 
-    // stupid hack to make sure that we have read all the values at least once
     // so that when we randomly access them they should all already be cached
     buffer.load()
   }
