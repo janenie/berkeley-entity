@@ -344,10 +344,14 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     })
     val denotationSimAvg = (0 until 4).map(i => (denotationSimSum(i) / denotationSim.size))
 
+    // TODO: more complicated management of context size
+    val contextVector = word2vec.getContextV(ment.context(5).map(_.toLowerCase()))
+    val denvecvals_a = denotations.map(d => word2vec.computeP(d.replace(" ", "_").replace("(","_lrb_").replace(")", "_rrb_").toLowerCase(), contextVector))
+    val mdenv = denvecvals_a.map(Math.abs(_)).max
+    val denvecvals = denvecvals_a.map(_ / mdenv)
+
     // TODO: implement the local vector features which compare the text of the pages
     // the context can be the set of items linking into/outof a page? but then that isn't the similarity
-
-
 
     Array.tabulate(queries.size, denotations.size)((queryIdx, denIdx) => {
       //val feats = new ArrayBuffer[Int];
@@ -365,7 +369,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
           for (i <- -1 until vv) {
             feat(str + vv)
           }
-        }
+        }den
       }
       */
       /*for(p <- PMINGDvals)
@@ -406,6 +410,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
             feat("PMINGD-max-VEC-"+i)
           }
         }
+        featv("word2vec=", denvecvals(denIdx))
       } else {
         feat("Impossible");
       }

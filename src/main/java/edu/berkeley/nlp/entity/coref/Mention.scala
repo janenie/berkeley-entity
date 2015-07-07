@@ -1,16 +1,12 @@
 package edu.berkeley.nlp.entity.coref
-import scala.collection.JavaConverters._
+
 import edu.berkeley.nlp.entity.lang.CorefLanguagePack
-import edu.berkeley.nlp.entity.sem.SemClass
-import scala.collection.mutable.HashMap
-import scala.collection.mutable.ArrayBuffer
-import edu.berkeley.nlp.entity.sem.SemClasser
-import edu.berkeley.nlp.futile.syntax.Trees.PennTreeRenderer
+import edu.berkeley.nlp.entity.sem.{SemClass, SemClasser}
+import edu.berkeley.nlp.entity.{Chunk, Document, Driver, WordNetInterfacer}
 import edu.berkeley.nlp.futile.util.Counter
-import edu.berkeley.nlp.entity.Chunk
-import edu.berkeley.nlp.entity.Document
-import edu.berkeley.nlp.entity.Driver;
-import edu.berkeley.nlp.entity.WordNetInterfacer
+
+import scala.collection.mutable.ArrayBuffer
+
 
 // TODO: Extract an interface for ConllDoc so I don't have to keep the whole
 // document around...but while I'm feature engineering it's useful to be able
@@ -49,6 +45,19 @@ class Mention(val rawDoc: Document,
       ret += rawDoc.words(sentIdx)(endIdx+ 1)
     ret + "}"
   }
+
+  def context(s: Int): Seq[String] = {
+    val ret = new collection.mutable.MutableList[String]()
+    var i = startIdx - s
+    while(i < endIdx + s) {
+      if(i > 0 && i < rawDoc.words(sentIdx).length && (i < startIdx || i > endIdx)) {
+        ret += rawDoc.words(sentIdx)(i)
+      }
+      i += 1
+    }
+    ret.seq
+  }
+
 
   def speaker = rawDoc.speakers(sentIdx)(headIdx);
 

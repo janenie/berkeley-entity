@@ -108,4 +108,32 @@ object FloatArray {
 
   // TODO: other methods copy from IntArray
 
+  val empty = makeArray(0)
+
+  def makeArray(length: Int): FloatArray = new RawFloatArray(new Array[Float](length))
+
+  def makeDiskBacked(arr: FloatArray): FloatArray = {
+    if(sharedBacking == null || (sharedConsumed + arr.length) > sharedBacking.length) {
+      sharedBacking = makeBackingArr(Math.max(arr.length, 1024*1024*500))
+      sharedConsumed = 0
+    }
+    val start = sharedConsumed
+    for(v <- arr) {
+      sharedBacking(sharedConsumed) = v
+      sharedConsumed += 1
+    }
+    new SubFloatArray(sharedBacking, start, arr.length)
+  }
+
+  private var sharedBacking: BufferFloatArray = null
+  private var sharedConsumed: Int = 0
+
+  private def makeBackingArr(length: Int) = {
+    val bufferName = s"FloatArray-${IntArray.dateTime}-${java.util.UUID.randomUUID().toString.replace("-","")}"
+    val file = new RandomAccessFile(IntArray.prefixDir + "/" + bufferName, "rw")
+    val buffer = file.getChannel.map(FileChannel.MapMode.READ_WRITE, 0, length.asInstanceOf[Long] * 4)
+    val floatBuffer = buffer.asFloatBuffer()
+    new BufferFloatArray(floatBuffer, bufferName, length)
+  }
+
 }

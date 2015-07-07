@@ -35,18 +35,22 @@ class w2vReader(val fname: String, val negvectors: Boolean = true) {
           val b = if (negvectors) new Array[Float](vdim) else null
           var i = 0
           while (i < vdim) {
-            a(i) = bbuf.readFloat()
+            val v = bbuf.readFloat()
+            if(v == v)
+              a(i) = v //bbuf.readFloat()
             i += 1
           }
           if (negvectors) {
             i = 0
             while (i < vdim) {
-              b(i) = bbuf.readFloat()
+              val v = bbuf.readFloat()
+              if(v == v)
+                b(i) = v //bbuf.readFloat()
               i += 1
             }
           }
           hm += (cbuf.toString ->(a, b))
-          bbuf.readByte() // read new line char
+          assert(bbuf.readByte() == '\n') // read new line char
           cbuf.clear()
         } else {
           cbuf.append(c.asInstanceOf[Char])
@@ -58,6 +62,42 @@ class w2vReader(val fname: String, val negvectors: Boolean = true) {
 
   def getVector(name: String) = {
     fmap.getOrElse(name, (Array[Float](), null))._1
+  }
+
+  def getContextV(context: Seq[String]): Array[Float] = {
+    val c = new Array[Float](vdim)
+    var cnt = 0
+    for(w <- context) {
+      val wv = fmap.getOrElse(w, null)
+      if (wv != null) {
+        var i = 0
+        cnt += 1
+        while (i < vdim) {
+          c(i) += wv._1(i)
+          i += 1
+        }
+      }
+    }
+    if(cnt > 0) {
+      var i = 0
+      while (i < vdim) {
+        c(i) /= cnt
+        i += 1
+      }
+    }
+    c
+  }
+
+  def computeP(word: String, context: Array[Float]): Double = {
+    val v = fmap.getOrElse(word, null)
+    if(v == null) return 0.0
+    var innerp: Double = 0.0
+    var i = 0
+    while(i < vdim) {
+      innerp += v._2(i).asInstanceOf[Double] * context(i).asInstanceOf[Double]
+      i += 1
+    }
+    innerp
   }
 
   //def computeDistance()
