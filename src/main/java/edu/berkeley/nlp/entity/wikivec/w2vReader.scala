@@ -2,6 +2,8 @@ package edu.berkeley.nlp.entity.wikivec
 
 import java.io._
 
+import edu.berkeley.nlp.entity.FloatArray
+
 import scala.collection.mutable
 
 /**
@@ -21,7 +23,7 @@ class w2vReader(val fname: String, val negvectors: Boolean = true) {
 
   val (fmap, vdim, numwords) = {
     val bbuf = new DataInputStream(new BufferedInputStream(new FileInputStream(new File(fname))))
-    val hm = new mutable.HashMap[String, (Array[Float], Array[Float]) ]()
+    val hm = new mutable.HashMap[String, (FloatArray, FloatArray) ]()
     val cbuf = new StringBuilder()
     val sizeSpec = bbuf.readLine().split(" ")
     val vdim = Integer.valueOf(sizeSpec(1))
@@ -31,8 +33,8 @@ class w2vReader(val fname: String, val negvectors: Boolean = true) {
         val c = bbuf.readByte()
         if (c == ' ') {
           // we have reached the end of a word
-          val a = new Array[Float](vdim)
-          val b = if (negvectors) new Array[Float](vdim) else null
+          val a = FloatArray.makeDiskArray(vdim) //new Array[Float](vdim)
+          val b = if(negvectors) FloatArray.makeDiskArray(vdim) else null //if (negvectors) new Array[Float](vdim) else null
           var i = 0
           while (i < vdim) {
             val v = bbuf.readFloat()

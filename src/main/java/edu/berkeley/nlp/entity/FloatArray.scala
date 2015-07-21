@@ -112,6 +112,16 @@ object FloatArray {
 
   def makeArray(length: Int): FloatArray = new RawFloatArray(new Array[Float](length))
 
+  def makeDiskArray(length: Int): FloatArray = {
+    if(sharedBacking == null || (sharedConsumed + length) > sharedBacking.length) {
+      sharedBacking = makeBackingArr(Math.max(length, 1024*1024*500))
+      sharedConsumed = 0
+    }
+    val start = sharedConsumed
+    sharedConsumed += length
+    new SubFloatArray(sharedBacking, start, length)
+  }
+
   def makeDiskBacked(arr: FloatArray): FloatArray = {
     if(sharedBacking == null || (sharedConsumed + arr.length) > sharedBacking.length) {
       sharedBacking = makeBackingArr(Math.max(arr.length, 1024*1024*500))
