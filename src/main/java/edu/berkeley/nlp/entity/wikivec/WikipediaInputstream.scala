@@ -1,4 +1,4 @@
-package edu.berkeley.nlp.entity.wikivec
+/*package edu.berkeley.nlp.entity.wikivec
 
 import java.io._
 
@@ -244,3 +244,4 @@ class WikipediaInputStream(val wikiDumpPath: String,
   }
 
 }
+*/

@@ -40,9 +40,9 @@ object SimpleRun {
 
 
 
-    val input = new WikipediaInputStream(wikiDump, wikipediaRedirectInterface)
+    //val input = new WikipediaInputStream(wikiDump, wikipediaRedirectInterface)
 
-    input.dumpTo(saveTo)
+    //input.dumpTo(saveTo)
 
     //val wvec = new WikipediaVector(sentenceIterator = input)
 

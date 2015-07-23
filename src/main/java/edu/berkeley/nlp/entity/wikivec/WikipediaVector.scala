@@ -1,4 +1,4 @@
-package edu.berkeley.nlp.entity.wikivec
+/*package edu.berkeley.nlp.entity.wikivec
 
 
 import java.util
@@ -303,3 +303,4 @@ object WikipediaVector {
 
 }
 
+*/
