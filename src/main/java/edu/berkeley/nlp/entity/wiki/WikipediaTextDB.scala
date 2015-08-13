@@ -1,13 +1,9 @@
 package edu.berkeley.nlp.entity.wiki
 
-import edu.berkeley.nlp.entity.{StringUnifier, IntArray}
+import edu.berkeley.nlp.entity.{IntArray, StringUnifier}
 import edu.berkeley.nlp.futile.fig.basic.{IOUtils, Indexer}
 import edu.berkeley.nlp.futile.util.Counter
 
-import scala.collection.JavaConversions._
-
-
-import scala.StringBuilder
 import scala.collection.mutable
 
 
@@ -26,6 +22,8 @@ class WikipediaTextDB (val indexer: Indexer[String],
   def getDocument(title: String) = words.getOrElse(title, IntArray.empty)
 
   def getContext(title: String) = context.getOrElse(title, IntArray.empty)
+
+  def getWordsFromVec(vec: IntArray) = vec.map(indexer.getObject(_))
 
   def compareVectors(a: IntArray, b: IntArray) = {
     var ai = 0

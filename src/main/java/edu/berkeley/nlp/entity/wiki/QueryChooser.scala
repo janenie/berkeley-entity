@@ -1,6 +1,6 @@
 package edu.berkeley.nlp.entity.wiki
 
-import edu.berkeley.nlp.entity.wikivec.w2vReader
+import edu.berkeley.nlp.entity.wikivec.{ExternalWikiProcessor, w2vReader}
 import edu.berkeley.nlp.entity.{ConllDocReader, GUtil}
 import edu.berkeley.nlp.entity.coref.{CorefDoc, CorefDocAssembler, MentionPropertyComputer}
 import edu.berkeley.nlp.entity.joint.{GeneralTrainer, LikelihoodAndGradientComputer}
@@ -245,7 +245,8 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
 
   def featurizeQueriesAndDenotations_GLOW(queries: Seq[Query], denotations: Seq[String], addToIndexer: Boolean,
                                           wikiDB: WikipediaInterface, goldKnowledgeSet: Seq[String],
-                                          word2vec: w2vReader): Array[Array[FeatureRep]] = {
+                                          word2vec: w2vReader,
+                                          externalWikiProcessor: ExternalWikiProcessor): Array[Array[FeatureRep]] = {
     val queryOutcomes = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val queryNonemptyList = queryOutcomes.map(_.isEmpty);
     val ment = queries.head.originalMent;
@@ -350,6 +351,9 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     val mdenv = denvecvals_a.map(Math.abs(_)).max
     val denvecvals = denvecvals_a.map(_ / mdenv)
 
+    //val externalWikiStatsR = externalWikiProcessor.lookup(ment.rawDoc.words.map(_.mkString(" ")).mkString(" "), ment.spanToString, denotations)
+    //val externalWikiStat = denotations.map(externalWikiStatsR(_)).toList
+
     // TODO: implement the local vector features which compare the text of the pages
     // the context can be the set of items linking into/outof a page? but then that isn't the similarity
 
@@ -411,6 +415,9 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
           }
         }
         featv("word2vec=", denvecvals(denIdx))
+
+        //featv("externalwiki=", externalWikiStat(denIdx))
+
       } else {
         feat("Impossible");
       }
