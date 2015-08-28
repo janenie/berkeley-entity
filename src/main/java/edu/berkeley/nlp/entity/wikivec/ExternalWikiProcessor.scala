@@ -3,9 +3,10 @@ package edu.berkeley.nlp.entity.wikivec
 import java.io._
 
 import edu.berkeley.nlp.entity.wiki.WikipediaInterface
-import org.json.JSONObject
+import org.json.{JSONTokener, JSONObject}
 
 import scala.collection.mutable
+import scala.collection.JavaConversions._
 
 /**
  * Created by matthewfl
@@ -13,7 +14,7 @@ import scala.collection.mutable
 class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: String=null) {
 
   /**
-   * source -> ( (surface text) -> (training, [(possible target, (isGold, score))]))
+   * source -> ( (surface text) -> (training, Gold, [(possible target, score)]))
    * the known gold value is only used when training isnce we are taking these items and
    * then running training over these
    *
@@ -21,12 +22,13 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
    * the title of a document does not make since as we will not know that during testing time
    */
 
-  type documentType = mutable.HashMap[String, (Boolean, Map[String, (Boolean, Float)])]
+  // TODO: support context around a link
+  type documentType = mutable.HashMap[String, (Boolean, String, Map[String, Float])]
   type queryType = mutable.HashMap[String, documentType]
 
 
   val queries = {
-    if(queryDB != null) {
+    if(queryDB != null && !queryDB.isEmpty) {
       val f = new File(queryDB)
       if(f.exists()) {
         load()
@@ -40,8 +42,8 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
 
   def lookup(from: String, surface: String, possibles: Seq[String], knownGold: String, training: Boolean) = {
     val doc = queries.getOrElseUpdate(from, new documentType)
-    doc.getOrElseUpdate(surface, (training, possibles.map(p => (p, ((p == knownGold), 0f))).toMap))
-    //queries.getOrElseUpdate((from, surface), )
+    val ret = doc.getOrElseUpdate(surface, (training, knownGold, possibles.map(p => (p, 0f)).toMap))._3
+    ret
   }
 
   def save(fname: String=queryDB) = {
@@ -56,7 +58,15 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
         val qJ = new JSONObject()
         docJ.put(q._1, qJ)
         qJ.put("training", q._2._1)
-
+        if(q._2._2 == null)
+          qJ.put("gold", "") // somehow we don't know what the gold label is here?
+        else
+          qJ.put("gold", q._2._2)
+        val gvals = new JSONObject()
+        qJ.put("vals", gvals)
+        for(m <- q._2._3) {
+          gvals.put(m._1,rm._2)
+        }
       }
     }
 
@@ -66,7 +76,26 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
   }
 
   def load(fname: String=queryDB) = {
+    ??? // TODO:
     val ret = new queryType
+    val jsontokenizer = new JSONTokener(new FileInputStream(fname))
+    val base = new JSONObject(jsontokenizer)
+    val queriesJ = base.getJSONObject("queries")
+    for(docKey <- queriesJ.keys()) {
+      val docJ = queriesJ.getJSONObject(docKey)
+      val doc = ret.getOrElseUpdate(docKey.asInstanceOf[String], new documentType)
+      for(qurKey <- docJ.keys()) {
+        val qur = docJ.getJSONObject(qurKey)
+        val training = qur.getBoolean("training")
+        val gold = qur.getString("gold")
+        val gvals = qur.getJSONObject("vals")
+        val mvals = gvals.keys.map(k => {
+          (k, gvals.getDouble(k).asInstanceOf[Float])
+        }).toMap
+        // TODO:
+      }
+    }
+
 
 
     ret

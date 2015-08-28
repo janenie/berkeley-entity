@@ -67,14 +67,16 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
   // Used for feature computation
   val queryChooser = new QueryChoiceComputer(wikiDB, featureIndexer)
 
-  def featurizeUseCache(ex: JointQueryDenotationExample, addToIndexer: Boolean, useGoldKnowledge: Boolean) {
+  def featurizeUseCache(ex: JointQueryDenotationExample, addToIndexer: Boolean, useGoldKnowledge: Boolean, isTraining: Boolean = false) {
     if (ex.cachedFeatsEachQuery == null) {
       /*if(ex.document.documentVectorCache == null) {
         ex.document.documentVectorCache = wikiDB.textDB.makeVector(ex.document.words)
         //ex.document.contextVectorCache = wikiDB.textDB.makeContextVector(ex.document.documentVectorCache)
       }*/
       ex.cachedFeatsEachQuery = queryChooser.featurizeQueries(ex.queries, addToIndexer)
-      ex.cachedFeatsEachQueryDenotation = queryChooser.featurizeQueriesAndDenotations_GLOW(ex.queries, ex.allDenotations, addToIndexer, wikiDB, ex.otherLinks, word2vec, externalWiki)
+      ex.cachedFeatsEachQueryDenotation = queryChooser.featurizeQueriesAndDenotations_GLOW(
+        ex.queries, ex.allDenotations, addToIndexer, wikiDB, ex.otherLinks, word2vec, externalWiki, isTraining,
+        if(ex.correctDenotationIndices.isEmpty) null else ex.correctDenotations(0))
     }
   }
 
@@ -290,7 +292,7 @@ object JointQueryDenotationChooser {
   val wikiPath = "data/ace05/ace05-all-conll-wiki" // contains the wiki links for both items
   val wikiDBPath = "models/wiki-db-ace.ser.gz"
   val w2vectors = "enwiki-vectors.bin"
-  val externalWikiProcess = "external-wiki.json.gz"
+  val externalWikiProcess = "external-wiki.json"
   val saveExternalWikiProcess = ""
 
   val lambda = 1e-8F
@@ -328,7 +330,9 @@ object JointQueryDenotationChooser {
     // Read in the title given surface database
     IntArray.prefixDir = new File(wikiDBPath).getParent
     val wikiDB = GUtil.load(wikiDBPath).asInstanceOf[WikipediaInterface];
-    val word2vec = new w2vReader(w2vectors)
+    // disable using w2v directly since it does not appear to work that well
+    // without additional support
+    val word2vec: w2vReader = null //new w2vReader(w2vectors)
     val externalWiki = new ExternalWikiProcessor(wikiDB, externalWikiProcess)
     // Make training examples, filtering out those with solutions that are unreachable because
     // they're not good for training
@@ -350,7 +354,7 @@ object JointQueryDenotationChooser {
         lastDocument = trainEx.document
       }
       trainEx.makeDocCache(wikiDB)
-      computer.featurizeUseCache(trainEx, true, useGoldKnowledge = true);
+      computer.featurizeUseCache(trainEx, true, useGoldKnowledge = true, isTraining = true);
     }
     Logger.logss(featIndexer.size + " features");
     // Train

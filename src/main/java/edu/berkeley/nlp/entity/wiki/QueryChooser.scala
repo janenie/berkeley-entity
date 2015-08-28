@@ -246,7 +246,8 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
   def featurizeQueriesAndDenotations_GLOW(queries: Seq[Query], denotations: Seq[String], addToIndexer: Boolean,
                                           wikiDB: WikipediaInterface, goldKnowledgeSet: Seq[String],
                                           word2vec: w2vReader,
-                                          externalWikiProcessor: ExternalWikiProcessor): Array[Array[FeatureRep]] = {
+                                          externalWikiProcessor: ExternalWikiProcessor,
+                                          isTraining: Boolean, goldDenotation: String): Array[Array[FeatureRep]] = {
     val queryOutcomes = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val queryNonemptyList = queryOutcomes.map(_.isEmpty);
     val ment = queries.head.originalMent;
@@ -346,13 +347,17 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     val denotationSimAvg = (0 until 4).map(i => (denotationSimSum(i) / denotationSim.size))
 
     // TODO: more complicated management of context size
-    val contextVector = word2vec.getContextV(ment.context(5).map(_.toLowerCase()))
-    val denvecvals_a = denotations.map(d => word2vec.computeP(d.replace(" ", "_").replace("(","_lrb_").replace(")", "_rrb_").toLowerCase(), contextVector))
-    val mdenv = denvecvals_a.map(Math.abs(_)).max
-    val denvecvals = denvecvals_a.map(_ / mdenv)
+    //val contextVector = word2vec.getContextV(ment.context(5).map(_.toLowerCase()))
+    //val denvecvals_a = denotations.map(d => word2vec.computeP(d.replace(" ", "_").replace("(","_lrb_").replace(")", "_rrb_").toLowerCase(), contextVector))
+    //val mdenv = denvecvals_a.map(Math.abs(_)).max
+    //val denvecvals = denvecvals_a.map(_ / mdenv)
 
-    //val externalWikiStatsR = externalWikiProcessor.lookup(ment.rawDoc.words.map(_.mkString(" ")).mkString(" "), ment.spanToString, denotations)
-    //val externalWikiStat = denotations.map(externalWikiStatsR(_)).toList
+
+    val externalWikiStatsR = externalWikiProcessor.lookup(ment.rawDoc.words.map(_.mkString(" ")).mkString(" "),
+      ment.spanToString, denotations, goldDenotation, isTraining)
+    // TODO: issue with multiple identical surface text and them not having the same set of links to documents...
+    // TODO: use context around a link
+    val externalWikiStat = denotations.map(externalWikiStatsR.getOrElse(_, 0f)).toList
 
     // TODO: implement the local vector features which compare the text of the pages
     // the context can be the set of items linking into/outof a page? but then that isn't the similarity
@@ -414,9 +419,9 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
             feat("PMINGD-max-VEC-"+i)
           }
         }
-        featv("word2vec=", denvecvals(denIdx))
+        //featv("word2vec=", denvecvals(denIdx))
 
-        //featv("externalwiki=", externalWikiStat(denIdx))
+        featv("externalwiki=", externalWikiStat(denIdx))
 
       } else {
         feat("Impossible");
