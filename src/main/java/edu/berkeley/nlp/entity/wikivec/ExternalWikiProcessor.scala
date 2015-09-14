@@ -65,7 +65,7 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
         val gvals = new JSONObject()
         qJ.put("vals", gvals)
         for(m <- q._2._3) {
-          gvals.put(m._1,rm._2)
+          gvals.put(m._1,m._2)
         }
       }
     }
@@ -76,11 +76,10 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
   }
 
   def load(fname: String=queryDB) = {
-    ??? // TODO:
     val ret = new queryType
     val jsontokenizer = new JSONTokener(new FileInputStream(fname))
     val base = new JSONObject(jsontokenizer)
-    val queriesJ = base.getJSONObject("queries")
+    val queriesJ = base.getJSONObject("results")
     for(docKey <- queriesJ.keys()) {
       val docJ = queriesJ.getJSONObject(docKey)
       val doc = ret.getOrElseUpdate(docKey.asInstanceOf[String], new documentType)
@@ -92,12 +91,9 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
         val mvals = gvals.keys.map(k => {
           (k, gvals.getDouble(k).asInstanceOf[Float])
         }).toMap
-        // TODO:
+        doc.put(qurKey, (training, gold, mvals))
       }
     }
-
-
-
     ret
   }
 

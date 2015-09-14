@@ -254,6 +254,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     val mentUpToHeadSize = ment.headIdx - ment.startIdx + 1;
     //val doc = ment.rawDoc
 
+    /*
     val (otherGoldLinksIn, otherGoldLinksOut) = getDentationLinksSets(goldKnowledgeSet, wikiDB)
 
     // TODO: it appears that there are some possible denotations that have no in/out links
@@ -314,6 +315,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
         }
       }
     }
+    */
 
     /*val PMINGDvals = Seq(
       GLOWfeatures[Int](PMI, refLinksIn, "PMI-in-"),
@@ -354,7 +356,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
 
 
     val externalWikiStatsR = externalWikiProcessor.lookup(ment.rawDoc.words.map(_.mkString(" ")).mkString(" "),
-      ment.spanToString, denotations, goldDenotation, isTraining)
+      ment.spanWithContext, denotations, goldDenotation, isTraining)
     // TODO: issue with multiple identical surface text and them not having the same set of links to documents...
     // TODO: use context around a link
     val externalWikiStat = denotations.map(externalWikiStatsR.getOrElse(_, 0f)).toList
@@ -412,13 +414,13 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
           feat("CompariableWordsAboveAvg-"+i+"=" + (denotationSim(denIdx)(i) > denotationSimAvg(i)))
           //featUpToVal("CompariableWordsReweight-"+i+"=", Math.floor(denotationSim(denIdx)(i) / denotationSimMax(i) * 10).asInstanceOf[Int])
         }
-        for(i <- 0 until pmingdvals(denIdx).size) {
+        /*for(i <- 0 until pmingdvals(denIdx).size) {
           featv("PMINGD-VEC-" + i + "=", (pmingdvals(denIdx)(i) / (maxpmingd(i) + .001) ))
           //featUpToVal("PMINGD-log-VEC-" + i + "=", Math.ceil(Math.log(pmingdvals(denIdx)(i))).asInstanceOf[Int])
           if(maxpmingd(i) == pmingdvals(denIdx)(i)) {
             feat("PMINGD-max-VEC-"+i)
           }
-        }
+        }*/
         //featv("word2vec=", denvecvals(denIdx))
 
         featv("externalwiki=", externalWikiStat(denIdx))

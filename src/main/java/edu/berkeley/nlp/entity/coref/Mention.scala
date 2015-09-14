@@ -70,6 +70,12 @@ class Mention(val rawDoc: Document,
   def wordsLc = cachedWordsLc;
   def pos = rawDoc.pos(sentIdx).slice(startIdx, endIdx);
   def headPos = rawDoc.pos(sentIdx)(headIdx);
+  def spanWithContext = {
+    val sent = rawDoc.words(sentIdx)
+    val start = if(startIdx > 10) startIdx - 10 else 0
+    val end = if(endIdx + 10 < sent.length) endIdx + 10 else sent.length
+    sent.slice(start, startIdx).mkString(" ") + " [" + sent.slice(startIdx, endIdx).mkString(" ") + "] " + sent.slice(endIdx, end).mkString(" ")
+  }
   
   def accessWordOrPlaceholder(idx: Int) = {
     if (idx < 0) Mention.StartWordPlaceholder else if (idx >= rawDoc.words(sentIdx).size) Mention.EndWordPlaceholder else rawDoc.words(sentIdx)(idx);

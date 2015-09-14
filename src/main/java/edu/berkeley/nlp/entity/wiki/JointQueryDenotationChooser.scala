@@ -84,7 +84,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
    * Computes a score matrix for (query, denotation) pairs based on the computed features
    */
   def getUnnormalizedJointScores(ex: JointQueryDenotationExample, weights: Array[Float]): Array[Array[Float]] = {
-    featurizeUseCache(ex, false, useGoldKnowledge = true) // TODO: change
+    featurizeUseCache(ex, false, useGoldKnowledge = true, isTraining = JointQueryDenotationChooser.isTraining) // TODO: change
     // each example will have a number of features associated with each query
     // each feature is an indicator, so we use the cache of the features indexes
     // and sum the values of the features
@@ -124,7 +124,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
     // in advance anyway to know how long the weight vector should be
 
     // todo:mfl: seems like there might be something wrong here.......
-    val allFeats = featurizeUseCache(ex, false, useGoldKnowledge = true) // TODO: change to false
+    val allFeats = featurizeUseCache(ex, false, useGoldKnowledge = true, isTraining = JointQueryDenotationChooser.isTraining) // TODO: change to false
     val scores = getUnnormalizedJointScores(ex, weights)
     val logNormalizer = SloppyMath.logAdd(scores.map(SloppyMath.logAdd(_)))
     var goldLogNormalizer = Float.NegativeInfinity
@@ -303,6 +303,8 @@ object JointQueryDenotationChooser {
 
   val numLoadedSamples = -1 // for debugging by loading less samples
 
+  var isTraining = true // DO NOT SET, AND FML
+
   def main(args: Array[String]) {
     LightRunner.initializeOutput(JointQueryDenotationChooser.getClass());
     LightRunner.populateScala(JointQueryDenotationChooser.getClass(), args)
@@ -344,6 +346,7 @@ object JointQueryDenotationChooser {
     val featIndexer = new Indexer[String]
     val computer = new JointQueryDenotationChoiceComputer(wikiDB, featIndexer, word2vec, externalWiki);
     var lastDocument : Document = null
+    isTraining = true
     for (trainEx <- trainExs) {
       if(trainEx.document != lastDocument) {
         if(lastDocument != null) {
@@ -368,6 +371,9 @@ object JointQueryDenotationChooser {
 
     // Build the test examples and decode the test set
     // No filtering now because we're doing test
+
+    isTraining = false // we are not longer looking at training examples
+
     val testExs = extractExamples(testCorefDocs, goldWikification, wikiDB, filterImpossible = true)//false);
 
     println("feature weights:")
