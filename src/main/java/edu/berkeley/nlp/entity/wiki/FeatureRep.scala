@@ -3,7 +3,6 @@ package edu.berkeley.nlp.entity.wiki
 
 import edu.berkeley.nlp.futile.fig.basic.Indexer
 
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -21,17 +20,19 @@ sealed trait FeatureRep {
 
   def addToGradient(scale: Float, gradient: Array[Float]): Unit
 
-  // TODO:
-  def toString(ind: Indexer[String]) = ???
-  // def toString = ???
+  def toString(ind: Indexer[String]) = {
+    intFeatures.map(ind.getObject(_)).mkString(" ") + " " +
+    weightedFeatures.zip(weightedFeaturesWeights).map(m => s"${ind.getObject(m._1)}: ${m._2}").mkString(" ")
+  }
 
 }
 
 object FeatureRep {
-  val numWeightedFeatures = 300
+  //val numWeightedFeatures = 300
 
-  private var nextWeightedIndex = 0
+  //private var nextWeightedIndex = 0
 
+  /*
   private val weightMap = new mutable.HashMap[Int,Int]()
 
   private val weightMapReverse = new mutable.HashMap[Int,Int]()
@@ -56,6 +57,7 @@ object FeatureRep {
       }
     }
   }
+  */
 
 }
 
@@ -82,7 +84,7 @@ class FeatureBuilder extends FeatureRep {
 
   def addIndicator(id: Int) = {
     //assert(id >= FeatureRep.numWeightedFeatures)
-    intFeaturesB += (id + FeatureRep.numWeightedFeatures)
+    intFeaturesB += id
   }
 
   def += (id: Int) = {
@@ -90,8 +92,8 @@ class FeatureBuilder extends FeatureRep {
   }
 
   def addWeighted(id: Int, v: Float) = {
-    val nid = FeatureRep.getWeightedMap(id)
-    weightedFeaturesB += ((nid, v))
+    //val nid = FeatureRep.getWeightedMap(id)
+    weightedFeaturesB += ((id, v))
   }
 
   override def dotWeights(weights: Array[Float]) = {

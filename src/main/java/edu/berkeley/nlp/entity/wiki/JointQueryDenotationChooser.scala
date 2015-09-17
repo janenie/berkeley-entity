@@ -207,7 +207,7 @@ class JointQueryDenotationChooser(val featureIndexer: Indexer[String],
       println("\t\t"+ex.cachedFeatsEachQuery(i).map(featureIndexer.getObject(_)).mkString(" "))
       for(j <- 0 until ex.allDenotations.length) {
         println("\t\t\t"+j+": "+ex.allDenotations(j)+": "+
-          ex.cachedFeatsEachQueryDenotation(i)(j).intFeatures.map(i => featureIndexer.getObject(i - FeatureRep.numWeightedFeatures)).mkString(" ")
+          ex.cachedFeatsEachQueryDenotation(i)(j).intFeatures.map(i => featureIndexer.getObject(i)).mkString(" ")
         // TODO: print the weights for the weighted features
         )
       }
@@ -362,7 +362,7 @@ object JointQueryDenotationChooser {
     Logger.logss(featIndexer.size + " features");
     // Train
     val gt = new GeneralTrainer[JointQueryDenotationExample]();
-    val weights = gt.trainAdagrad(trainExs, computer, featIndexer.size + FeatureRep.numWeightedFeatures, 1.0F, lambda, batchSize, numItrs);
+    val weights = gt.trainAdagrad(trainExs, computer, featIndexer.size, 1.0F, lambda, batchSize, numItrs);
 
     val chooser = new JointQueryDenotationChooser(featIndexer, weights)
 
@@ -378,9 +378,9 @@ object JointQueryDenotationChooser {
 
     println("feature weights:")
     weights.zipWithIndex.sortBy(v => Math.abs(v._1)).foreach(v =>{
-      val vv = FeatureRep.mapToOrgValue(v._2)
-      if(vv != -1)
-        println(featIndexer.getObject(vv)+": "+v._1)
+      //val vv = FeatureRep.mapToOrgValue(v._2)
+      //if(vv != -1)
+      println(featIndexer.getObject(v._2)+": "+v._1)
     })
     println()
 
@@ -409,19 +409,20 @@ object JointQueryDenotationChooser {
             //println("found correct item")
           }
         }
-        if(qq != -1) {
+        /*if(qq != -1) {
           //chooser.printEverything(t.queries, wikiDB, qq, t.otherLinks)
-          /*println(
+
+          println(
             s"""Correct item in place: $qq
                 |\tcorrect value: ${picks(qq)}
                 |\t\t${denFeats(picks(qq)._2).flatMap(featIndexer.getObject(_)).mkString(" ")}
                 |\tchosen value : ${picks(0)}
                 |\t\t${denFeats(picks(0)._2).flatMap(featIndexer.getObject(_)).mkString(" ")}
               """.stripMargin)
-*/
+
         } else {
           println("THIS QUERY SHOULD HAVE BEEN FILTERED")
-        }
+        }*/
       }
       (t.rawCorrectDenotations, picks.map(_._1), t.queries(0).originalMent.rawDoc)
     })
