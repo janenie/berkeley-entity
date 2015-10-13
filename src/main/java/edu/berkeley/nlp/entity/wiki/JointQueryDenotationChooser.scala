@@ -76,7 +76,8 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
       ex.cachedFeatsEachQuery = queryChooser.featurizeQueries(ex.queries, addToIndexer)
       ex.cachedFeatsEachQueryDenotation = queryChooser.featurizeQueriesAndDenotations_GLOW(
         ex.queries, ex.allDenotations, addToIndexer, wikiDB, ex.otherLinks, word2vec, externalWiki, isTraining,
-        if(ex.correctDenotationIndices.isEmpty) null else ex.correctDenotations(0))
+        if(ex.correctDenotationIndices.isEmpty) null else ex.correctDenotations(0),
+        ex.cachedFeatsEachQuery)
     }
   }
 

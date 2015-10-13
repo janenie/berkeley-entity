@@ -3,7 +3,7 @@ package edu.berkeley.nlp.entity.wikivec
 import java.io._
 
 import edu.berkeley.nlp.entity.wiki.WikipediaInterface
-import org.json.{JSONTokener, JSONObject}
+import org.json.{JSONArray, JSONTokener, JSONObject}
 
 import scala.collection.mutable
 import scala.collection.JavaConversions._
@@ -23,7 +23,7 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
    */
 
   // TODO: support context around a link
-  type documentType = mutable.HashMap[String, (Boolean, String, Map[String, Float])]
+  type documentType = mutable.HashMap[String, (Boolean, String, Array[Int], Map[String, (Float, Array[Int])])]
   type queryType = mutable.HashMap[String, documentType]
 
 
@@ -42,7 +42,7 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
 
   def lookup(from: String, surface: String, possibles: Seq[String], knownGold: String, training: Boolean) = {
     val doc = queries.getOrElseUpdate(from, new documentType)
-    val ret = doc.getOrElseUpdate(surface, (training, knownGold, possibles.map(p => (p, 0f)).toMap))._3
+    val ret = doc.getOrElseUpdate(surface, (training, knownGold, null, possibles.map(p => (p, (0f, null))).toMap))._3
     ret
   }
 
@@ -58,14 +58,18 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
         val qJ = new JSONObject()
         docJ.put(q._1, qJ)
         qJ.put("training", q._2._1)
+        //qJ.put("")
         if(q._2._2 == null)
           qJ.put("gold", "") // somehow we don't know what the gold label is here?
         else
           qJ.put("gold", q._2._2)
         val gvals = new JSONObject()
         qJ.put("vals", gvals)
-        for(m <- q._2._3) {
-          gvals.put(m._1,m._2)
+        for(m <- q._2._4) {
+          val iarr = new JSONArray()
+          iarr.put(m._2._1)
+          iarr.put(m._2._2) // hopefully putting an array will work
+          gvals.put(m._1,iarr)
         }
       }
     }

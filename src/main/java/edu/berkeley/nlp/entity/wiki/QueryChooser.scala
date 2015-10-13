@@ -247,7 +247,8 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
                                           wikiDB: WikipediaInterface, goldKnowledgeSet: Seq[String],
                                           word2vec: w2vReader,
                                           externalWikiProcessor: ExternalWikiProcessor,
-                                          isTraining: Boolean, goldDenotation: String): Array[Array[FeatureRep]] = {
+                                          isTraining: Boolean, goldDenotation: String,
+                                          queryFeatures: Array[Array[Int]]): Array[Array[FeatureRep]] = {
     val queryOutcomes = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val queryNonemptyList = queryOutcomes.map(_.isEmpty);
     val ment = queries.head.originalMent;
