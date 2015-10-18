@@ -1,13 +1,12 @@
 package edu.berkeley.nlp.entity.wiki
 
-import edu.berkeley.nlp.entity.{Document, Chunk, GUtil}
-import edu.berkeley.nlp.futile.util.Logger
-import edu.berkeley.nlp.futile.util.Counter
-import scala.collection.JavaConverters._
-import edu.berkeley.nlp.entity.joint.JointDocACE
 import java.io.PrintWriter
 
-import scala.collection.mutable.ArrayBuffer
+import edu.berkeley.nlp.entity.joint.JointDocACE
+import edu.berkeley.nlp.entity.{Document, Chunk, GUtil}
+import edu.berkeley.nlp.futile.util.{Counter, Logger}
+
+import scala.collection.JavaConverters._
 
 object WikificationEvaluator {
   

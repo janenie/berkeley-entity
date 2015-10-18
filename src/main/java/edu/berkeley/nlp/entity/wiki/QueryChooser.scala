@@ -360,7 +360,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
       ment.spanWithContext, denotations, goldDenotation, isTraining)
     // TODO: issue with multiple identical surface text and them not having the same set of links to documents...
     // TODO: use context around a link
-    val externalWikiStat = denotations.map(externalWikiStatsR.getOrElse(_, 0f)).toList
+    val externalWikiStat = denotations.map(externalWikiStatsR.getOrElse(_, (0f, null))).toList
 
     // TODO: implement the local vector features which compare the text of the pages
     // the context can be the set of items linking into/outof a page? but then that isn't the similarity
@@ -424,7 +424,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
         }*/
         //featv("word2vec=", denvecvals(denIdx))
 
-        featv("externalwiki=", externalWikiStat(denIdx))
+        featv("externalwiki=", externalWikiStat(denIdx)._1)
 
       } else {
         feat("Impossible");

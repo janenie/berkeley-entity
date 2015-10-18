@@ -42,7 +42,7 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
 
   def lookup(from: String, surface: String, possibles: Seq[String], knownGold: String, training: Boolean) = {
     val doc = queries.getOrElseUpdate(from, new documentType)
-    val ret = doc.getOrElseUpdate(surface, (training, knownGold, null, possibles.map(p => (p, (0f, null))).toMap))._3
+    val ret = doc.getOrElseUpdate(surface, (training, knownGold, null, possibles.map(p => (p, (0f, null))).toMap))._4
     ret
   }
 
@@ -93,9 +93,9 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
         val gold = qur.getString("gold")
         val gvals = qur.getJSONObject("vals")
         val mvals = gvals.keys.map(k => {
-          (k, gvals.getDouble(k).asInstanceOf[Float])
+          (k, (gvals.getDouble(k).asInstanceOf[Float], null.asInstanceOf[Array[Int]]))
         }).toMap
-        doc.put(qurKey, (training, gold, mvals))
+        doc.put(qurKey, (training, gold, null.asInstanceOf[Array[Int]], mvals))
       }
     }
     ret

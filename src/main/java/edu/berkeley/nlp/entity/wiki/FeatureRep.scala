@@ -59,6 +59,13 @@ object FeatureRep {
   }
   */
 
+  private val nwi = Array[Int]()
+  private val nwf = Array[Float]()
+
+  def makeFeatureRep(ind: Array[Int]): FeatureRep = {
+    new FinalFeature(ind, nwi, nwf)
+  }
+
 }
 
 

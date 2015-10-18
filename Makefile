@@ -14,4 +14,6 @@ queryModel: $(TARGET)
 	java -cp $(TARGET) edu.berkeley.nlp.entity.wiki.QueryChooser -wikiDBPath models/wiki-db-ace.ser.gz
 
 wikiLimited: $(TARGET)
+	mkdir -p /tmp/gggg/raw
+	mkdir -p /tmp/gggg/wiki
 	java -cp $(TARGET) edu.berkeley.nlp.entity.preprocess.PreprocessingDriver ++config/base.conf -inputDir ../WikificationACL2011Data/WikipediaSample/RawTextsTrain/ -outputDir /tmp/gggg/raw/ -mode WIKILIMITED
