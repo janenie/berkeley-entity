@@ -4,7 +4,9 @@ package edu.berkeley.nlp.entity
  * Created by matthew on 2/18/15.
  */
 trait Document {
+
   def docID : String
+
   def docPartNo : Int
   // arrays of words in each sentence including punc
   def words : Seq[Seq[String]]

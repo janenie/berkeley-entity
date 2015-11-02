@@ -1,15 +1,6 @@
 package edu.berkeley.nlp.entity.preprocess;
 
-import java.io.File;
-import java.io.PrintWriter;
-import java.util.Arrays;
-import java.util.List;
-
-import edu.berkeley.nlp.PCFGLA.CoarseToFineMaxRuleParser;
-import edu.berkeley.nlp.PCFGLA.Grammar;
-import edu.berkeley.nlp.PCFGLA.Lexicon;
-import edu.berkeley.nlp.PCFGLA.ParserData;
-import edu.berkeley.nlp.PCFGLA.TreeAnnotations;
+import edu.berkeley.nlp.PCFGLA.*;
 import edu.berkeley.nlp.entity.ConllDocJustWords;
 import edu.berkeley.nlp.entity.ConllDocReader;
 import edu.berkeley.nlp.entity.WikiDocReader;
@@ -21,6 +12,11 @@ import edu.berkeley.nlp.futile.fig.exec.Execution;
 import edu.berkeley.nlp.futile.util.Logger;
 import edu.berkeley.nlp.syntax.Tree;
 import edu.berkeley.nlp.util.Numberer;
+
+import java.io.File;
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Preprocessing pipeline that can sentence-split, tokenize, parse, and optionally
@@ -93,7 +89,7 @@ public class PreprocessingDriver implements Runnable {
   public static boolean useAlternateTokenizer = false;
   
   public static enum Mode {
-    RAW_TEXT, CONLL_JUST_WORDS, REDO_CONLL, WIKILIMITED;
+    RAW_TEXT, CONLL_JUST_WORDS, REDO_CONLL, WIKILIMITED, AIDA
   }
   
   public static void main(String[] args) {
@@ -132,6 +128,8 @@ public class PreprocessingDriver implements Runnable {
       } else if (mode == Mode.WIKILIMITED) {
           WikiDocReader docReader = new WikiDocReader(Language.ENGLISH, "");
           WikiPreprocessor.processesDocs(inputDir + "/", outputDir + "/", docReader, splitter, parser, backoffParser, nerSystem);
+      } else if (mode == Mode.AIDA) {
+        AidaPreprocessor.processesDocs(inputDir, outputDir +"/", splitter, parser, backoffParser, nerSystem);
       } else {
         ConllDocReader docReader = new ConllDocReader(Language.ENGLISH, "");
         for (File inputFile : new File(inputDir).listFiles()) {
