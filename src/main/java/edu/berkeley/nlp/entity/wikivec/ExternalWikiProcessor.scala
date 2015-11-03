@@ -1,8 +1,10 @@
 package edu.berkeley.nlp.entity.wikivec
 
 import java.io._
+import java.util
 
 import edu.berkeley.nlp.entity.wiki.WikipediaInterface
+import edu.berkeley.nlp.futile.fig.basic.Indexer
 import org.json.{JSONArray, JSONTokener, JSONObject}
 
 import scala.collection.mutable
@@ -23,7 +25,10 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
    */
 
   // TODO: support context around a link
-  type documentType = mutable.HashMap[String, (Boolean, String, Array[Int], Map[String, (Float, Array[Int])])]
+  case class SurfaceMatchTarget(val score: Float, var targetParam: Array[Int])
+  case class SurfaceMatch(val training: Boolean, val gold: String, var queryParams: Array[Int], val targets: Map[String, SurfaceMatchTarget])
+  type documentType = mutable.HashMap[String, SurfaceMatch]
+  //type documentType = mutable.HashMap[String, (Boolean, String, Array[Int], Map[String, (Float, Array[Int])])]
   type queryType = mutable.HashMap[String, documentType]
 
 
@@ -42,40 +47,43 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
 
   def lookup(from: String, surface: String, possibles: Seq[String], knownGold: String, training: Boolean) = {
     val doc = queries.getOrElseUpdate(from, new documentType)
-    val ret = doc.getOrElseUpdate(surface, (training, knownGold, null, possibles.map(p => (p, (0f, null))).toMap))._4
+    val ret = doc.getOrElseUpdate(surface, new SurfaceMatch(training, knownGold, null, possibles.map(p => (p, new SurfaceMatchTarget(0f, null))).toMap)).targets
+    //val ret = doc.getOrElseUpdate(surface, (training, knownGold, null, possibles.map(p => (p, (0f, null))).toMap))._4
     ret
   }
 
-  def save(fname: String=queryDB) = {
+  def save(fname: String=queryDB, indexer: Indexer[String]) = {
     val pages = new mutable.HashSet[String]()
     val base = new JSONObject()
     val queriesJ = new JSONObject()
     base.put("queries", queriesJ)
+    base.put("featIndex", indexer.getObjects.asInstanceOf[util.ArrayList[String]].toArray)
     for(doc <- queries) {
       val docJ = new JSONObject()
       queriesJ.put(doc._1, docJ)
       for(q <- doc._2) {
         val qJ = new JSONObject()
         docJ.put(q._1, qJ)
-        qJ.put("training", q._2._1)
+        qJ.put("training", q._2.training)
         //qJ.put("")
-        if(q._2._2 == null)
+        if(q._2.gold == null)
           qJ.put("gold", "") // somehow we don't know what the gold label is here?
         else
-          qJ.put("gold", q._2._2)
+          qJ.put("gold", q._2.gold)
         val gvals = new JSONObject()
         qJ.put("vals", gvals)
-        for(m <- q._2._4) {
+        for(m <- q._2.targets) {
           val iarr = new JSONArray()
-          iarr.put(m._2._1)
-          iarr.put(m._2._2) // hopefully putting an array will work
-          gvals.put(m._1,iarr)
+          iarr.put(m._2.score)
+          iarr.put(m._2.targetParam) // hopefully putting an array will work
+          gvals.put(m._1, iarr)
         }
       }
     }
 
     val f = new OutputStreamWriter(/*new GZIPOutputStream*/(new FileOutputStream(fname)))
-    f.write(base.toString())
+    base.write(f)
+    //f.write(base.toString())
     f.close()
   }
 
@@ -93,9 +101,9 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
         val gold = qur.getString("gold")
         val gvals = qur.getJSONObject("vals")
         val mvals = gvals.keys.map(k => {
-          (k, (gvals.getDouble(k).asInstanceOf[Float], null.asInstanceOf[Array[Int]]))
+          (k, new SurfaceMatchTarget(gvals.getDouble(k).asInstanceOf[Float], null))
         }).toMap
-        doc.put(qurKey, (training, gold, null.asInstanceOf[Array[Int]], mvals))
+        doc.put(qurKey, new SurfaceMatch(training, gold, null, mvals))
       }
     }
     ret

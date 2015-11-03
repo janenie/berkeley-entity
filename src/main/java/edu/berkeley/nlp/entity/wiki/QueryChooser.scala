@@ -360,12 +360,13 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
       ment.spanWithContext, denotations, goldDenotation, isTraining)
     // TODO: issue with multiple identical surface text and them not having the same set of links to documents...
     // TODO: use context around a link
-    val externalWikiStat = denotations.map(externalWikiStatsR.getOrElse(_, (0f, null))).toList
+    val externalWikiStat = denotations.map(externalWikiStatsR.getOrElse(_, null)).toList
+
 
     // TODO: implement the local vector features which compare the text of the pages
     // the context can be the set of items linking into/outof a page? but then that isn't the similarity
 
-    Array.tabulate(queries.size, denotations.size)((queryIdx, denIdx) => {
+    val ret = Array.tabulate(queries.size, denotations.size)((queryIdx, denIdx) => {
       //val feats = new ArrayBuffer[Int];
       val feats = new FeatureBuilder
       def feat(str: String) = addFeat(str, feats, addToIndexer)
@@ -390,9 +391,11 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
       */
       val query = queries(queryIdx);
       val den = denotations(denIdx);
+      var meaningFul = false
       if (den == NilToken) {
         feat("NilAndQueryNonempty=" + queryNonemptyList(queryIdx));
       } else if (queryOutcomes(queryIdx).containsKey(den)) {
+        meaningFul = true
         val queryDescriptorWithProper = (if (ment.pos(ment.headIdx - ment.startIdx) == "NNP") "PROP" else "NOM") + "-" + query.queryType;
         val queryRank = queryOutcomes(queryIdx).getSortedKeys().indexOf(den);
         feat("Rank=" + queryDescriptorWithProper + "-" + (queryRank + 1))
@@ -424,13 +427,25 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
         }*/
         //featv("word2vec=", denvecvals(denIdx))
 
-        featv("externalwiki=", externalWikiStat(denIdx)._1)
+        if(externalWikiStat(denIdx) != null)
+          featv("externalwiki=", externalWikiStat(denIdx).score)
 
       } else {
         feat("Impossible");
       }
       feats.makeFinal
     });
+    // save the set of indicator features that can go with this denotation....
+    //val denotationsFeatsSets = new Array[Set[Int]](queries.size)
+    for(denIdx <- 0 until denotations.size) {
+      val feats = new mutable.HashSet[Int]()
+      for (quyIdx <- 0 until queries.size) {
+        feats ++= ret(quyIdx)(denIdx).intFeatures
+      }
+      externalWikiStat(denIdx).targetParam = feats.toArray.sorted
+    }
+
+    ret
   }
   
   def featurizeQueriesAndDenotations(queries: Seq[Query], denotations: Seq[String], addToIndexer: Boolean): Array[Array[Array[Int]]] = {

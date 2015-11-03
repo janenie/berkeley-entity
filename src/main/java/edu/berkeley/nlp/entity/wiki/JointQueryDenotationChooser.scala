@@ -76,7 +76,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
 //      ex.cachedFeatsEachQuery = queryChooser.featurizeQueries(ex.queries, addToIndexer)
       ex.cachedFeatsEachQueryDenotation = queryChooser.featurizeQueriesAndDenotations_GLOW(
         ex.queries, ex.allDenotations, addToIndexer, wikiDB, ex.otherLinks, word2vec, externalWiki, isTraining,
-        if(ex.correctDenotationIndices.isEmpty) null else ex.correctDenotations(0),
+        if(ex.correctDenotations.isEmpty) null else ex.correctDenotations(0),
         ex.cachedFeatsEachQuery)
       val r = queryChooser.featurizeQueriesAndDenotations(ex.queries, ex.allDenotations, addToIndexer)
 
@@ -182,11 +182,11 @@ class JointQueryDenotationChooser(val featureIndexer: Indexer[String],
     computer.computeDenotation(ex, weights)
   }*/
 
-  def pickDenotations(queries: Seq[Query], wikiDB: WikipediaInterface, otherLinks: Seq[String], word2vec: w2vReader, externalWikiProcessor: ExternalWikiProcessor) : (Seq[(String, Int)], Array[Array[Int]]) = {
+  def pickDenotations(queries: Seq[Query], wikiDB: WikipediaInterface, otherLinks: Seq[String], word2vec: w2vReader, externalWikiProcessor: ExternalWikiProcessor, gold: String) : (Seq[(String, Int)], Array[Array[Int]]) = {
     val computer = new JointQueryDenotationChoiceComputer(wikiDB, featureIndexer, word2vec, externalWikiProcessor);
     val denotations = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val dden = Query.extractDenotationSetWithNil(queries, denotations, JointQueryDenotationChooser.maxNumWikificationOptions)
-    val ex = new JointQueryDenotationExample(queries, dden, Array[String](), Array[String](), otherLinks);
+    val ex = new JointQueryDenotationExample(queries, dden, Array[String](gold), Array[String](), otherLinks);
     val denotationMarginals = computer.getDenotationLogMarginals(ex, weights)
 
     (ex.allDenotations.zipWithIndex.sortBy(v => denotationMarginals(v._2)).reverse,
@@ -393,7 +393,8 @@ object JointQueryDenotationChooser {
     val results = testExs.map(t => {
       // TODO: need more then one perdicted title
       t.makeDocCache(wikiDB)
-      val (picks, denFeats) = chooser.pickDenotations(t.queries, wikiDB, t.otherLinks, word2vec = word2vec, externalWikiProcessor = externalWiki) // TOOD: remove hack
+
+      val (picks, denFeats) = chooser.pickDenotations(t.queries, wikiDB, t.otherLinks, word2vec = word2vec, externalWikiProcessor = externalWiki, gold = t.rawCorrectDenotations(0)) // TOOD: remove hack
       if(!isCorrect(t.rawCorrectDenotations, picks(0)._1)) {
         // the pick is not correct, attempt to determine if there would have
         // been a better pick that is in the picks list (which basically means all of the
@@ -417,7 +418,7 @@ object JointQueryDenotationChooser {
           //chooser.printEverything(t.queries, wikiDB, qq, t.otherLinks)
 
           println(
-            s"""Correct item in place: $qq
+            s"""Correct tem in place: $qq
                 |\tcorrect value: ${picks(qq)}
                 |\t\t${denFeats(picks(qq)._2).flatMap(featIndexer.getObject(_)).mkString(" ")}
                 |\tchosen value : ${picks(0)}
@@ -444,7 +445,7 @@ object JointQueryDenotationChooser {
     println("Number of correct items that were in the set: "+correctItemWasInSet)
 
     if(!saveExternalWikiProcess.isEmpty)
-      externalWiki.save(saveExternalWikiProcess)
+      externalWiki.save(saveExternalWikiProcess, featIndexer)
 
 
     LightRunner.finalizeOutput();
