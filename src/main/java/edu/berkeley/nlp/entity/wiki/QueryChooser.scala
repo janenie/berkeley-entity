@@ -335,10 +335,10 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
 
     val denotationSim = denotations.map(t => {
       List(
-        wikiDB.textDB.compareDocumentC(ment.rawDoc.documentVectorCache, t),
-        wikiDB.textDB.compareDocumentC(ment.rawDoc.contextVectorCache, t),
-        wikiDB.textDB.compareContextC(ment.rawDoc.documentVectorCache, t),
-        wikiDB.textDB.compareContextC(ment.rawDoc.contextVectorCache, t)
+        if(ment.rawDoc.documentVectorCache != null && t != null) wikiDB.textDB.compareDocumentC(ment.rawDoc.documentVectorCache, t) else 0,
+        if(ment.rawDoc.contextVectorCache != null && t != null) wikiDB.textDB.compareDocumentC(ment.rawDoc.contextVectorCache, t) else 0,
+        if(ment.rawDoc.documentVectorCache != null && t != null) wikiDB.textDB.compareContextC(ment.rawDoc.documentVectorCache, t) else 0,
+        if(ment.rawDoc.contextVectorCache != null && t != null) wikiDB.textDB.compareContextC(ment.rawDoc.contextVectorCache, t) else 0
       )
     })
     val denotationSimMax = denotationSim.reduce((a,b) => {

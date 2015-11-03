@@ -73,7 +73,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
         ex.document.documentVectorCache = wikiDB.textDB.makeVector(ex.document.words)
         //ex.document.contextVectorCache = wikiDB.textDB.makeContextVector(ex.document.documentVectorCache)
       }*/
-//      ex.cachedFeatsEachQuery = queryChooser.featurizeQueries(ex.queries, addToIndexer)
+      ex.cachedFeatsEachQuery = queryChooser.featurizeQueries(ex.queries, addToIndexer)
       ex.cachedFeatsEachQueryDenotation = queryChooser.featurizeQueriesAndDenotations_GLOW(
         ex.queries, ex.allDenotations, addToIndexer, wikiDB, ex.otherLinks, word2vec, externalWiki, isTraining,
         if(ex.correctDenotations.isEmpty) null else ex.correctDenotations(0),
@@ -92,7 +92,7 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
     // each example will have a number of features associated with each query
     // each feature is an indicator, so we use the cache of the features indexes
     // and sum the values of the features
-    val rawQueryScores = ex.cachedFeatsEachQuery.map(feats => GUtil.scoreIndexedFeats(feats, weights));
+    val rawQueryScores = ex.cachedFeatsEachQuery.map(feats => if(feats != null) GUtil.scoreIndexedFeats(feats, weights) else 0f);
     // these are the weights from each query wrt the various word choices
     val queryDenotationMatrix = ex.cachedFeatsEachQueryDenotation.map(_.map(feats => feats.dotWeights(weights)));
     val scores = Array.tabulate(ex.queries.size, ex.allDenotations.size)((i, j) => Float.NegativeInfinity)
