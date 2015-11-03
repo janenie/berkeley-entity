@@ -88,7 +88,7 @@ object AidaPreprocessor {
        l.foreach(writer.println(_))
        writer.println
      })
-     writer.println("#end")
+     //  writer.println("#end") // wtf, wiki without the #end
      writer.close()
   }
 
