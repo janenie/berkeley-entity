@@ -8,6 +8,7 @@ import edu.berkeley.nlp.entity.ner.NerSystemLabeled
 import edu.berkeley.nlp.entity.{Chunk, DepConstTree, WikiDoc}
 import edu.berkeley.nlp.futile.fig.basic.{IOUtils, Indexer}
 import edu.berkeley.nlp.futile.util.Logger
+import org.apache.commons.lang3.StringEscapeUtils
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -55,8 +56,26 @@ object WPLinksPreprocessor {
       documents.put(docName, currentDocument.toList)
     }
 
+    // the system for some reason has split up the documents into difference sentences or something
+    // merge the sentences back together into a single document
 
-    val wpLinkDocs = documents.par.map(doc => {
+    val docsCombinedBack = new mutable.HashMap[String,List[(String, List[String])]]()
+    for(d <- documents) {
+      val simpleName = "(.*)_\\d+\\.txt".r.findFirstMatchIn(d._1).get.group(1)
+      val l = docsCombinedBack.getOrElse(simpleName, List[(String,List[String])]())
+      docsCombinedBack.put(simpleName, (l ++ List(d)))
+    }
+
+    val docsMerged = docsCombinedBack.map(d => {
+      val sents = d._2.sortBy(s => {
+        ".*_(\\d+)\\.txt".r.findFirstMatchIn(s._1).get.group(1).toInt
+      })
+      val doc = List(sents(0)._2(0)) ++ sents.map(s => s._2.drop(1)).flatMap(l => l)
+      (d._1, doc)
+    }).toMap
+
+
+    val wpLinkDocs = docsMerged.par.map(doc => {
       try {
         process(doc._1, doc._2, outputDir + doc._1, splitter, parser.newInstance(), backoffParser.newInstance(), nerSystem)
       } catch {
@@ -100,7 +119,6 @@ object WPLinksPreprocessor {
 
 
 
-
   def WPLinksToWikidoc(documentName: String, content: List[String],
                        //docReader : WikiDocReader,
                        splitter : SentenceSplitter,
@@ -127,7 +145,7 @@ object WPLinksPreprocessor {
       }
     }
     for(i <- 1 until csplit.size - 1) { // ignore the begin and end documents
-      if(false && csplit(i).length == 1 && csplit(i)(0).isEmpty) {
+      if(csplit(i).length == 1 && csplit(i)(0).isEmpty) {
         // this is the start of a new sentence
         saveReference(sentenceWords.length)
         sentences += sentenceWords.toSeq
@@ -154,6 +172,10 @@ object WPLinksPreprocessor {
       references += sentenceReferences.toSeq
     }
 
+    val references2 = references.map(s => s.map(b => {
+      new Chunk[String](b.start, b.end, StringEscapeUtils.unescapeJava(b.label))
+    }))
+
     val parses = sentences.map(t => {
       Reprocessor.convertToFutileTree(PreprocessingDriver.parse(parser, backoffParser, t.toList.asJava))
     })
@@ -176,9 +198,9 @@ object WPLinksPreprocessor {
       pos=pos,
       trees=trees,
       nerChunks = sentences.map(a=>Seq()), // TODO:?
-      corefChunks = references.map(r => r.map(c => new Chunk(c.start, c.end, indexer.getIndex(c.label)))),
+      corefChunks = references2.map(r => r.map(c => new Chunk(c.start, c.end, indexer.getIndex(c.label)))),
       speakers = empty,
-      wikiRefChunks = references
+      wikiRefChunks = references2
     )
 
     Logger.logss("finished processing: "+documentName)

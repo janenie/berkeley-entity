@@ -61,6 +61,7 @@ scalacOptions ++= Seq("-optimise")//, "-Yinline-warnings", "-feature", "-depreca
 //
 
 libraryDependencies += "org.json" % "json" % "20141113"
+libraryDependencies += "org.apache.commons" % "commons-lang3" % "3.4"
 //libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0"
 
 //libraryDependencies += "net.sf.flexjson" % "flexjson" % "3.3"
