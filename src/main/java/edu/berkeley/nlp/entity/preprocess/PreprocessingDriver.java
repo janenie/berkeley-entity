@@ -89,7 +89,7 @@ public class PreprocessingDriver implements Runnable {
   public static boolean useAlternateTokenizer = false;
   
   public static enum Mode {
-    RAW_TEXT, CONLL_JUST_WORDS, REDO_CONLL, WIKILIMITED, AIDA
+    RAW_TEXT, CONLL_JUST_WORDS, REDO_CONLL, WIKILIMITED, AIDA, WPLINKS,
   }
   
   public static void main(String[] args) {
@@ -130,6 +130,8 @@ public class PreprocessingDriver implements Runnable {
           WikiPreprocessor.processesDocs(inputDir + "/", outputDir + "/", docReader, splitter, parser, backoffParser, nerSystem);
       } else if (mode == Mode.AIDA) {
         AidaPreprocessor.processesDocs(inputDir, outputDir +"/", splitter, parser, backoffParser, nerSystem);
+      } else if(mode == Mode.WPLINKS) {
+        WPLinksPreprocessor.processesDocs(inputDir, outputDir + "/", splitter, parser, backoffParser, nerSystem);
       } else {
         ConllDocReader docReader = new ConllDocReader(Language.ENGLISH, "");
         for (File inputFile : new File(inputDir).listFiles()) {

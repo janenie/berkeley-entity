@@ -255,7 +255,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     val mentUpToHeadSize = ment.headIdx - ment.startIdx + 1;
     //val doc = ment.rawDoc
 
-    /*
+
     val (otherGoldLinksIn, otherGoldLinksOut) = getDentationLinksSets(goldKnowledgeSet, wikiDB)
 
     // TODO: it appears that there are some possible denotations that have no in/out links
@@ -316,7 +316,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
         }
       }
     }
-    */
+
 
     /*val PMINGDvals = Seq(
       GLOWfeatures[Int](PMI, refLinksIn, "PMI-in-"),
@@ -416,15 +416,15 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
           featv("CompariableWordsLog-"+i+"=", (denotationSim(denIdx)(i) / (denotationSimMax(i) + .001) ))
           feat("CompariableIsMaxWordSim-"+i+"=" + (denotationSim(denIdx)(i) == denotationSimMax(i)))
           feat("CompariableWordsAboveAvg-"+i+"=" + (denotationSim(denIdx)(i) > denotationSimAvg(i)))
-          //featUpToVal("CompariableWordsReweight-"+i+"=", Math.floor(denotationSim(denIdx)(i) / denotationSimMax(i) * 10).asInstanceOf[Int])
+          featv("CompariableWordsReweight-"+i+"=", Math.floor(denotationSim(denIdx)(i) / denotationSimMax(i) * 10).asInstanceOf[Int])
         }
-        /*for(i <- 0 until pmingdvals(denIdx).size) {
+        for(i <- 0 until pmingdvals(denIdx).size) {
           featv("PMINGD-VEC-" + i + "=", (pmingdvals(denIdx)(i) / (maxpmingd(i) + .001) ))
           //featUpToVal("PMINGD-log-VEC-" + i + "=", Math.ceil(Math.log(pmingdvals(denIdx)(i))).asInstanceOf[Int])
           if(maxpmingd(i) == pmingdvals(denIdx)(i)) {
             feat("PMINGD-max-VEC-"+i)
           }
-        }*/
+        }
         //featv("word2vec=", denvecvals(denIdx))
 
         if(externalWikiStat(denIdx) != null)
