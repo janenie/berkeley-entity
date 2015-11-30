@@ -78,9 +78,8 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
         ex.queries, ex.allDenotations, addToIndexer, wikiDB, ex.otherLinks, word2vec, externalWiki, isTraining,
         if(ex.correctDenotations.isEmpty) null else ex.correctDenotations(0),
         ex.cachedFeatsEachQuery)
-      val r = queryChooser.featurizeQueriesAndDenotations(ex.queries, ex.allDenotations, addToIndexer)
-
-      ex.cachedFeatsEachQueryDenotation = r.map(_.map(FeatureRep.makeFeatureRep(_)))
+//      val r = queryChooser.featurizeQueriesAndDenotations(ex.queries, ex.allDenotations, addToIndexer)
+//      ex.cachedFeatsEachQueryDenotation = r.map(_.map(FeatureRep.makeFeatureRep(_)))
     }
   }
 
@@ -99,6 +98,9 @@ class JointQueryDenotationChoiceComputer(val wikiDB: WikipediaInterface,
     for (queryIdx <- 0 until ex.queries.size; denotationIdx <- 0 until ex.allDenotations.size) {
       // These are indicator weights, so by summing them we can compute the resulting value of choosing a given word
       // and a given query by combining the results of the dot product of the query and the denotation
+
+      // these values are in log space, so the sum here is a multiply, and the values should be propto probs
+      // but tha rawQS and qDM are created from summing over their features,
       scores(queryIdx)(denotationIdx) = rawQueryScores(queryIdx) + queryDenotationMatrix(queryIdx)(denotationIdx)
     }
     scores

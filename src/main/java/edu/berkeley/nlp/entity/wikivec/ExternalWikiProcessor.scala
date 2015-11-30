@@ -5,10 +5,10 @@ import java.util
 
 import edu.berkeley.nlp.entity.wiki.WikipediaInterface
 import edu.berkeley.nlp.futile.fig.basic.Indexer
-import org.json.{JSONArray, JSONTokener, JSONObject}
+import org.json.{JSONArray, JSONObject}
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 /**
  * Created by matthewfl
@@ -25,8 +25,9 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
    */
 
   // TODO: support context around a link
-  case class SurfaceMatchTarget(val score: Float, var targetParam: Array[Int])
-  case class SurfaceMatch(val training: Boolean, val gold: String, var queryParams: Array[Int], val targets: Map[String, SurfaceMatchTarget])
+  case class SurfaceMatchTarget(val score: Float, var targetParam: Array[Array[Int]]) // target params is [queries][target]
+  case class SurfaceQueries(val queryParams: Array[Int])
+  case class SurfaceMatch(val training: Boolean, val gold: String, var queryParams: Array[Int], val targets: Map[String, SurfaceMatchTarget], val queries: util.ArrayList[SurfaceQueries])
   type documentType = mutable.HashMap[String, SurfaceMatch]
   //type documentType = mutable.HashMap[String, (Boolean, String, Array[Int], Map[String, (Float, Array[Int])])]
   type queryType = mutable.HashMap[String, documentType]
@@ -47,9 +48,9 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
 
   def lookup(from: String, surface: String, possibles: Seq[String], knownGold: String, training: Boolean) = {
     val doc = queries.getOrElseUpdate(from, new documentType)
-    val ret = doc.getOrElseUpdate(surface, new SurfaceMatch(training, knownGold, null, possibles.map(p => (p, new SurfaceMatchTarget(0f, null))).toMap)).targets
+    val ret = doc.getOrElseUpdate(surface, new SurfaceMatch(training, knownGold, null, possibles.map(p => (p, new SurfaceMatchTarget(0f, null))).toMap, new util.ArrayList[SurfaceQueries]()))
     //val ret = doc.getOrElseUpdate(surface, (training, knownGold, null, possibles.map(p => (p, (0f, null))).toMap))._4
-    ret
+    (ret.targets, ret.queries)
   }
 
   def save(fname: String=queryDB, indexer: Indexer[String]) = {
@@ -78,6 +79,11 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
           iarr.put(m._2.targetParam) // hopefully putting an array will work
           gvals.put(m._1, iarr)
         }
+        val qvals = new JSONArray()
+        qJ.put("query_vals", qvals)
+        for(i <- q._2.queries) {
+          qvals.put(i.queryParams)
+        }
       }
     }
 
@@ -88,25 +94,26 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
   }
 
   def load(fname: String=queryDB) = {
-    val ret = new queryType
-    val jsontokenizer = new JSONTokener(new FileInputStream(fname))
-    val base = new JSONObject(jsontokenizer)
-    val queriesJ = base.getJSONObject("results")
-    for(docKey <- queriesJ.keys()) {
-      val docJ = queriesJ.getJSONObject(docKey)
-      val doc = ret.getOrElseUpdate(docKey.asInstanceOf[String], new documentType)
-      for(qurKey <- docJ.keys()) {
-        val qur = docJ.getJSONObject(qurKey)
-        val training = qur.getBoolean("training")
-        val gold = qur.getString("gold")
-        val gvals = qur.getJSONObject("vals")
-        val mvals = gvals.keys.map(k => {
-          (k, new SurfaceMatchTarget(gvals.getDouble(k).asInstanceOf[Float], null))
-        }).toMap
-        doc.put(qurKey, new SurfaceMatch(training, gold, null, mvals))
-      }
-    }
-    ret
+    ???
+//    val ret = new queryType
+//    val jsontokenizer = new JSONTokener(new FileInputStream(fname))
+//    val base = new JSONObject(jsontokenizer)
+//    val queriesJ = base.getJSONObject("results")
+//    for(docKey <- queriesJ.keys()) {
+//      val docJ = queriesJ.getJSONObject(docKey)
+//      val doc = ret.getOrElseUpdate(docKey.asInstanceOf[String], new documentType)
+//      for(qurKey <- docJ.keys()) {
+//        val qur = docJ.getJSONObject(qurKey)
+//        val training = qur.getBoolean("training")
+//        val gold = qur.getString("gold")
+//        val gvals = qur.getJSONObject("vals")
+//        val mvals = gvals.keys.map(k => {
+//          (k, new SurfaceMatchTarget(gvals.getDouble(k).asInstanceOf[Float], null))
+//        }).toMap
+//        doc.put(qurKey, new SurfaceMatch(training, gold, null, mvals))
+//      }
+//    }
+//    ret
   }
 
 

@@ -142,7 +142,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     });
   }
 
-  def getDentationLinksSets(denotations: Seq[String], wikiDB: WikipediaInterface) : (Seq[Set[Int]], Seq[Set[Int]]) = {
+  def getDenotationLinksSets(denotations: Seq[String], wikiDB: WikipediaInterface) : (Seq[Set[Int]], Seq[Set[Int]]) = {
     (denotations.map(wikiDB.linksDB.getInLinksSetUseCache(_)), denotations.map(wikiDB.linksDB.getOutLinksSetUseCache(_)))
   }
 
@@ -256,11 +256,11 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     //val doc = ment.rawDoc
 
 
-    val (otherGoldLinksIn, otherGoldLinksOut) = getDentationLinksSets(goldKnowledgeSet, wikiDB)
+    val (otherGoldLinksIn, otherGoldLinksOut) = getDenotationLinksSets(goldKnowledgeSet, wikiDB)
 
     // TODO: it appears that there are some possible denotations that have no in/out links
     // which must mean that there is an issue with the wikipedia query extracting system
-    val (refLinksIn, refLinksOut) = getDentationLinksSets(denotations, wikiDB)
+    val (refLinksIn, refLinksOut) = getDenotationLinksSets(denotations, wikiDB)
 
     val totalTitles = otherGoldLinksIn.foldLeft(Set[Int]())(_ | _) |
       otherGoldLinksOut.foldLeft(Set[Int]())(_ | _) |
@@ -356,7 +356,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     //val denvecvals = denvecvals_a.map(_ / mdenv)
 
 
-    val externalWikiStatsR = externalWikiProcessor.lookup(ment.rawDoc.words.map(_.mkString(" ")).mkString(" "),
+    val (externalWikiStatsR, externalWikiQuery) = externalWikiProcessor.lookup(ment.rawDoc.words.map(_.mkString(" ")).mkString(" "),
       ment.spanWithContext, denotations, goldDenotation, isTraining)
     // TODO: issue with multiple identical surface text and them not having the same set of links to documents...
     // TODO: use context around a link
@@ -398,7 +398,10 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
         meaningFul = true
         val queryDescriptorWithProper = (if (ment.pos(ment.headIdx - ment.startIdx) == "NNP") "PROP" else "NOM") + "-" + query.queryType;
         val queryRank = queryOutcomes(queryIdx).getSortedKeys().indexOf(den);
+
+
         feat("Rank=" + queryDescriptorWithProper + "-" + (queryRank + 1))
+
         val queryStr = query.getFinalQueryStr;
         val matchesQuery = den.toLowerCase == queryStr.toLowerCase;
         feat("MatchesQuery=" + queryDescriptorWithProper + "-" + matchesQuery)
@@ -407,17 +410,20 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
           feat("StartsWithQuery=" + queryDescriptorWithProper + "-" + (den.toLowerCase.startsWith(queryStr.toLowerCase)));
           feat("EndsWithQuery=" + queryDescriptorWithProper + "-" + (den.toLowerCase.endsWith(queryStr.toLowerCase)));
         }
+
         val denotationHasParenthetical = den.contains("(") && den.endsWith(")");
         feat("ContainsParenthetical=" + queryDescriptorWithProper + "-" + denotationHasParenthetical);
         if (denotationHasParenthetical) {
           feat("MatchesQueryUpToParen=" + queryDescriptorWithProper + "-" + (den.substring(0, den.indexOf("(")).trim.toLowerCase == queryStr.toLowerCase))
         }
+
         for(i <- 0 until 4) {
           featv("CompariableWordsLog-"+i+"=", (denotationSim(denIdx)(i) / (denotationSimMax(i) + .001) ))
           feat("CompariableIsMaxWordSim-"+i+"=" + (denotationSim(denIdx)(i) == denotationSimMax(i)))
           feat("CompariableWordsAboveAvg-"+i+"=" + (denotationSim(denIdx)(i) > denotationSimAvg(i)))
           featv("CompariableWordsReweight-"+i+"=", Math.floor(denotationSim(denIdx)(i) / denotationSimMax(i) * 10).asInstanceOf[Int])
         }
+
         for(i <- 0 until pmingdvals(denIdx).size) {
           featv("PMINGD-VEC-" + i + "=", (pmingdvals(denIdx)(i) / (maxpmingd(i) + .001) ))
           //featUpToVal("PMINGD-log-VEC-" + i + "=", Math.ceil(Math.log(pmingdvals(denIdx)(i))).asInstanceOf[Int])
@@ -437,12 +443,31 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     });
     // save the set of indicator features that can go with this denotation....
     //val denotationsFeatsSets = new Array[Set[Int]](queries.size)
+    for(quyIdx <- 0 until queries.size) {
+      externalWikiQuery.add(new externalWikiProcessor.SurfaceQueries(queryFeatures(quyIdx)))
+    }
     for(denIdx <- 0 until denotations.size) {
-      val feats = new mutable.HashSet[Int]()
-      for (quyIdx <- 0 until queries.size) {
-        feats ++= ret(quyIdx)(denIdx).intFeatures
+      val joint = new Array[Array[Int]](queries.size)
+      for(quyIdx <- 0 until queries.size) {
+        joint(quyIdx) = ret(quyIdx)(denIdx).intFeatures
       }
-      externalWikiStat(denIdx).targetParam = feats.toArray.sorted
+      externalWikiStat(denIdx).targetParam = joint
+//      val feats = new mutable.HashSet[Int]()
+//      val den = denotations(denIdx)
+//      // index of best query for this denotation
+//      val maxQ = (0 until queries.size).map(q => (if(queryOutcomes(q).containsKey(den)) queryOutcomes(q).getSortedKeys.indexOf(den) else 100, q)).minBy(_._1)._2
+//      feats ++= ret(maxQ)(denIdx).intFeatures
+//      feats ++= queryFeatures(maxQ)
+//
+////      for (quyIdx <- 0 until queries.size) {
+////        if(queryOutcomes(quyIdx).containsKey(denotations(denIdx))) {
+////          feats ++= ret(quyIdx)(denIdx).intFeatures
+////          feats ++= queryFeatures(quyIdx)
+////        }
+////      }
+////
+//
+//      externalWikiStat(denIdx).targetParam = feats.toArray.sorted
     }
 
     ret
