@@ -27,7 +27,7 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
   // TODO: support context around a link
   case class SurfaceMatchTarget(val score: Float, var targetParam: Array[Array[Int]]) // target params is [queries][target]
   case class SurfaceQueries(val queryParams: Array[Int])
-  case class SurfaceMatch(val training: Boolean, val gold: String, var queryParams: Array[Int], val targets: Map[String, SurfaceMatchTarget], val queries: util.ArrayList[SurfaceQueries])
+  case class SurfaceMatch(val training: Boolean, val gold: Seq[String], var queryParams: Array[Int], val targets: Map[String, SurfaceMatchTarget], val queries: util.ArrayList[SurfaceQueries])
   type documentType = mutable.HashMap[String, SurfaceMatch]
   //type documentType = mutable.HashMap[String, (Boolean, String, Array[Int], Map[String, (Float, Array[Int])])]
   type queryType = mutable.HashMap[String, documentType]
@@ -46,7 +46,7 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
     }
   }
 
-  def lookup(from: String, surface: String, possibles: Seq[String], knownGold: String, training: Boolean) = {
+  def lookup(from: String, surface: String, possibles: Seq[String], knownGold: Seq[String], training: Boolean) = {
     val doc = queries.getOrElseUpdate(from, new documentType)
     val ret = doc.getOrElseUpdate(surface, new SurfaceMatch(training, knownGold, null, possibles.map(p => (p, new SurfaceMatchTarget(0f, null))).toMap, new util.ArrayList[SurfaceQueries]()))
     //val ret = doc.getOrElseUpdate(surface, (training, knownGold, null, possibles.map(p => (p, (0f, null))).toMap))._4
@@ -68,9 +68,9 @@ class ExternalWikiProcessor(val wikiInterface: WikipediaInterface, val queryDB: 
         qJ.put("training", q._2.training)
         //qJ.put("")
         if(q._2.gold == null)
-          qJ.put("gold", "") // somehow we don't know what the gold label is here?
+          qJ.put("gold", Array[String]()) // somehow we don't know what the gold label is here?
         else
-          qJ.put("gold", q._2.gold)
+          qJ.put("gold", q._2.gold.toArray)
         val gvals = new JSONObject()
         qJ.put("vals", gvals)
         for(m <- q._2.targets) {

@@ -247,7 +247,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
                                           wikiDB: WikipediaInterface, goldKnowledgeSet: Seq[String],
                                           word2vec: w2vReader,
                                           externalWikiProcessor: ExternalWikiProcessor,
-                                          isTraining: Boolean, goldDenotation: String,
+                                          isTraining: Boolean, goldDenotations: Seq[String],
                                           queryFeatures: Array[Array[Int]]): Array[Array[FeatureRep]] = {
     val queryOutcomes = queries.map(query => wikiDB.disambiguateBestGetAllOptions(query));
     val queryNonemptyList = queryOutcomes.map(_.isEmpty);
@@ -357,7 +357,7 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
 
 
     val (externalWikiStatsR, externalWikiQuery) = externalWikiProcessor.lookup(ment.rawDoc.words.map(_.mkString(" ")).mkString(" "),
-      ment.spanWithContext, denotations, goldDenotation, isTraining)
+      ment.spanWithContext, denotations, goldDenotations, isTraining)
     // TODO: issue with multiple identical surface text and them not having the same set of links to documents...
     // TODO: use context around a link
     val externalWikiStat = denotations.map(externalWikiStatsR.getOrElse(_, null)).toList
@@ -371,8 +371,9 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
       val feats = new FeatureBuilder
       def feat(str: String) = addFeat(str, feats, addToIndexer)
       // TODO: some bug with non finite values, so just filter them
-      def featv(str: String, v: Double) = if(java.lang.Double.isFinite(v))
-        addFeat(str, v.asInstanceOf[Float], feats, addToIndexer)
+      def featv(str: String, v: Double) = {}// if(java.lang.Double.isFinite(v))
+//        addFeat(str, v.asInstanceOf[Float], feats, addToIndexer)
+
 
       /*def featUpToVal(str: String, vv: Int) = {
         // there is some infty in the value, so dividing by zero or something...
@@ -392,6 +393,11 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
       val query = queries(queryIdx);
       val den = denotations(denIdx);
       var meaningFul = false
+
+      // debugging hack
+//      if(goldDenotations.contains(den))
+//        feat("isGoldLabel")
+
       if (den == NilToken) {
         feat("NilAndQueryNonempty=" + queryNonemptyList(queryIdx));
       } else if (queryOutcomes(queryIdx).containsKey(den)) {
@@ -449,7 +455,12 @@ class QueryChoiceComputer(val wikiDB: WikipediaInterface,
     for(denIdx <- 0 until denotations.size) {
       val joint = new Array[Array[Int]](queries.size)
       for(quyIdx <- 0 until queries.size) {
-        joint(quyIdx) = ret(quyIdx)(denIdx).intFeatures
+        val f = ret(quyIdx)(denIdx).intFeatures
+        if(goldDenotations(0).contains("Sony_Music")) {
+          println("A)", f.mkString(" "), f.length, denotations(denIdx))
+        }
+
+        joint(quyIdx) = f
       }
       externalWikiStat(denIdx).targetParam = joint
 //      val feats = new mutable.HashSet[Int]()
